@@ -1,0 +1,48 @@
+{% extends 'list.html' %}
+{% load static %}
+
+{% block head_list %}
+<script src="{% static 'lib/moment-2.25.3/moment-with-locales.js' %}"></script>
+<script src="{% static 'lib/tempusdominus-bootstrap-4/tempusdominus-bootstrap-4.min.js' %}"></script>
+<link href="{% static 'lib/tempusdominus-bootstrap-4/tempusdominus-bootstrap-4.min.css' %}" rel="stylesheet" />
+
+<script src="{% static 'budget/js/list.js' %}"></script>
+{% endblock %}
+
+{% block grow1 %}
+
+{% endblock %}
+
+{% block columns %}
+<tr>
+    <th scope="col" style="width: 10%;">Usuario</th>
+    <th scope="col" style="width: 10%;">Fecha</th>
+    <th scope="col" style="width: 20%;">Nº Presupuesto</th>
+    <th scope="col" style="width: 30%;">Cliente</th>
+    <th scope="col" style="width: 10%;">Total ($).</th>
+    <th scope="col" style="width: 20%;">Opciones</th>
+</tr>
+{% endblock %}
+
+{% block rows %}
+
+{% endblock %}
+
+{% block buttons_list %}
+<a href="{% url 'crud:sale_create' %}" class="btn btn-outline-info">
+    <i class="fas fa-boxes"></i> Ir a Facturación
+</a>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    $('#form-control-sede').on('change', function () {
+        var select = document.getElementById('form-control-sede');
+        var sede = this.options[select.selectedIndex];
+
+        localStorage.setItem('sede', sede.value);
+
+        window.location.reload();
+    });
+</script>
+{% endblock %}

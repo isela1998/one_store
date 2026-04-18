@@ -1,0 +1,232 @@
+{% extends 'list.html' %} {% load widget_tweaks %} {% load static %} {% load humanize %} {% block head_list %}
+<script src="{% static 'products/js/list.js' %}"></script>
+{% endblock %} {% block dolar %} {% endblock %} {% block grow1 %}
+{% endblock %}
+{% block columns %}
+<tr>
+    <th scope="col" style="width: 10%;">Código</th>
+    <th scope="col" style="width: 10%;">Categ.</th>
+    <th scope="col" style="width: 5%;">Tipo</th>
+    <th scope="col" style="width: 20%;">Producto</th>
+    <th scope="col" style="width: 15%;">Descripción</th>
+    <th scope="col" style="width: 5%;">Inv.</th>
+    <th scope="col" style="width: 5%;">Costo</th>
+    <th scope="col" style="width: 5%;">PV $</th>
+    <th scope="col" style="width: 10%;">PV Bs</th>
+    <th scope="col" style="width: 15%;">Opciones</th>
+</tr>
+{% endblock %} {% block rows %} {% endblock %}
+
+{% block buttons_list %}
+{% if request.user.is_superuser %}
+<a class="btn btn-outline-info btnAdd">
+    <i class="fas fa-plus"></i> <i class="fas fa-box-open"></i> Nuevo producto</a>
+<a class="btn btn-outline-info btnAddCategory">
+    <i class="fas fa-plus"></i> <i class="fas fa-braille"></i> Nueva categoría</a>
+<a class="btn btn-outline-info btnAddType">
+    <i class="fas fa-plus"></i> <i class="fas fa-archive"></i> Nuevo tipo de producto</a>
+{% endif %}
+<span id="btn-report"></span>
+{% if request.user.is_superuser %}
+<input type="hidden" name="group" value="0">
+{% else %}
+<input type="hidden" name="group" value="1">
+{% endif %}
+{% endblock %}
+
+
+{% block javascript %}
+<!-- Modal Agregar Productos -->
+<div class="modal fade" id="modalProduct" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <form method="post" action="." class="formProduct" enctype="multipart/form-data">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <b><i id="i_modal_title" class="fas fa-plus"></i> <i class="fas text-primary fa-boxes"></i>
+                            <span id="span_modal_title"></span></b>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <input name="action" type="hidden" value="add">
+                        <input name="addOtherSedes" type="hidden" value="0">
+                        <input name="sede" type="hidden" value="">
+                        <input name="id" id="id" type="hidden" value="0">
+                        <div class="d-flex flex-row flex-nowrap">
+                            <div class="form-group" style="width: 60%;">
+                                <label>{{ formProduct.code.label }}</label>
+                                {{ formProduct.code }}
+                            </div>
+                            <div class="form-group" style="width: 40%; text-align: center;">
+                                <label>{{ formProduct.category.label }}</label>
+                                {{ formProduct.category }}
+                            </div>
+                        </div>
+                        <div class="d-flex flex-row flex-nowrap">
+                            <div class="form-group" style="width: 70%;">
+                                <label>{{ formProduct.brand.label }}</label>
+                                {{ formProduct.brand }}
+                            </div>
+                            <div class="form-group" style="width: 30%; text-align: center;">
+                                <label>{{ formProduct.type_product.label }}</label>
+                                {{ formProduct.type_product }}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>{{ formProduct.product.label }}</label>
+                            {{ formProduct.product }}
+                        </div>
+                        <div class="form-group">
+                            <label>{{ formProduct.description.label }}</label>
+                            {{ formProduct.description }}
+                        </div>
+                        <div class="d-flex flex-row flex-nowrap">
+                            <div class="form-group wd-35">
+                                <label>{{ formProduct.cost.label }}</label>
+                                {{ formProduct.cost }}
+                            </div>
+                            <div class="form-group wd-35">
+                                <label>{{ formProduct.price_dl.label }}</label>
+                                {{ formProduct.price_dl }}
+                            </div>
+                            <div class="form-group wd-30 text-center">
+                                <label>{{ formProduct.quantity.label }}</label>
+                                {{ formProduct.quantity|attr:'autocompletar:off' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" id="btn_submit" class="btn btn-outline-info btn-block"><i
+                            class="fas fa-save"></i>
+                        Guardar</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<!-- Modal Category -->
+<div class="modal fade" id="modalCategory" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <form method="post" action="." class="formCategory" enctype="multipart/form-data">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <b><i class="fas text-primary fa-plus"></i> <i class="fas text-primary fa-braille"></i>
+                            <span>Nueva Categoría</span></b>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <input name="sede" type="hidden" value="">
+                        <input name="action" type="hidden" value="addCategory">
+                        <input name="id" id="id" type="hidden" value="0"> {% for field in formCategory.visible_fields %}
+                        <div class="form-group">
+                            <label>{{ field.label }}:</label>
+                            {{ field }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-outline-info btn-block"><i class="fas fa-save"></i>
+                        Guardar</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<!-- Modal Type -->
+<div class="modal fade" id="modalType" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <form method="post" action="." class="formType" enctype="multipart/form-data">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <b><i class="fas text-primary fa-plus"></i> <i class="fas text-primary fa-archive"></i>
+                            <span>Nuevo Tipo de Producto</span></b>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <input name="sede" type="hidden" value="">
+                        <input name="action" type="hidden" value="addType">
+                        <input name="id" id="id" type="hidden" value="0"> {% for field in formType.visible_fields %}
+                        <div class="form-group">
+                            <label>{{ field.label }}:</label>
+                            {{ field }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-outline-info btn-block"><i class="fas fa-save"></i>
+                        Guardar</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<!-- Modal Increase Product -->
+<div class="modal fade" id="modalIncreaseProduct" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <form method="post" action="." class="formIncreaseProduct" enctype="multipart/form-data">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <b><i class="fas text-primary fa-plus"></i> <i class="fas text-primary fa-boxes"></i>
+                            <span>Incrementar cantidad</span></b>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <input name="sede" type="hidden" value="">
+                        <input name="action" type="hidden" value="IncreaseProduct">
+                        <input name="id" id="id" type="hidden" value="0">
+                        <div class="form-group">
+                            <label for="name_product">Producto:</label>
+                            <input type="text" name="name_product" value="" class="form-control" id="name_product"
+                                readonly>
+                            <label for="dsp-inventary">Inventario disponible:</label>
+                            <input type="number" name="dsp-inventary" class="form-control" id="dsp-inventary" readonly>
+                        </div>
+                        {% for field in formUpProduct.visible_fields %}
+                        <div class="form-group">
+                            <label>Cantidad a Incrementar:</label>
+                            {{ field }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-outline-info btn-block"><i class="fas fa-save"></i>
+                        Subir</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<script>
+    $('#form-control-sede').on('change', function () {
+        var select = document.getElementById('form-control-sede');
+        var sede = this.options[select.selectedIndex];
+
+        localStorage.setItem('sede', sede.value);
+
+        window.location.reload();
+    });
+</script>
+{% endblock %}

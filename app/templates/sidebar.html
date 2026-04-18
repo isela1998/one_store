@@ -1,0 +1,174 @@
+{% load static %} {% load humanize %}
+<aside class="main-sidebar sidebar-dark-primary elevation-4">
+    <div class="sidebar">
+        <div class="text-center img-logo-mf">
+            <a href="{% url 'crud:dashboard' %}">
+                <img id="img-sidebar-collapsed" src="/media/img/logo/logo.png" alt="logo" class="img-fluid">
+            </a>
+        </div>
+        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+            <li class="nav-header text-white">
+                <h5><b>{{ data.name }}</b></h5>
+                <p>Autoparts</p>
+            </li>
+        </ul>
+        <nav class="mt-2">
+            <hr class=" hr_division">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                <li class="nav-header"><b>PÁGINA PRINCIPAL</b></li>
+                <li class="nav-item">
+                    <a href="{% url 'crud:dashboard' %}" class="nav-link">
+                        <i class="nav-icon fas fa-home"></i>
+                        <p class="p-nav">
+                            INICIO
+                        </p>
+                    </a>
+                </li>
+                <hr class="hr_division">
+            </ul>
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                <li class="nav-header"><b>CALENDARIO</b></li>
+                <li class="nav-item">
+                    <a href="{% url 'crud:events' %}" class="nav-link">
+                        <i class="nav-icon fas fa-calendar-alt"></i>
+                        <p class="p-nav">
+                            Eventos
+                        </p>
+                    </a>
+                </li>
+                <hr class="hr_division">
+            </ul>
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                <li class="nav-header"><b>FACTURACIÓN</b></li>
+                <li class="nav-item">
+                    <a href="{% url 'crud:products_list' %}" class="nav-link">
+                        <i class="nav-icon fas fa-boxes"></i>
+                        <p class="p-nav">
+                            Productos
+                        </p>
+                    </a>
+                </li>
+                {% if request.user.is_superuser %}
+                <li class="nav-item">
+                    <a href="{% url 'crud:client' %}" class="nav-link">
+                        <i class="nav-icon fas fa-users"></i>
+                        <p class="p-nav">
+                            Clientes
+                        </p>
+                    </a>
+                </li>
+                {% endif %}
+                <li class="nav-item">
+                    <a href="{% url 'crud:sale_create' %}" class="nav-link">
+                        <i class="nav-icon fas fa-file-invoice"></i>
+                        <p class="p-nav">
+                            Registrar venta
+                        </p>
+                    </a>
+                </li>
+                <hr class="hr_division">
+                <li class="nav-header"><b>VENTAS</b></li>
+                <li class="nav-item">
+                    <a href="{% url 'crud:sale_list' %}" class="nav-link">
+                        <i class="nav-icon fas fa-history"></i>
+                        <p class="p-nav">
+                            Historial Ventas
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'crud:credit_list' %}" class="nav-link">
+                        <i class="nav-icon fas fa-book-reader"></i>
+                        <p class="p-nav">
+                            Listado de créditos
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'crud:debt_list' %}" class="nav-link">
+                        <i class="nav-icon fas fa-comments-dollar"></i>
+                        <p class="p-nav">
+                            Cuentas por pagar
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'crud:budget_list' %}" class="nav-link">
+                        <i class="nav-icon fas fa-file-alt"></i>
+                        <p class="p-nav">
+                            Presupuestos
+                        </p>
+                    </a>
+                </li>
+                <hr class="hr_division">
+                {% if request.user.is_superuser %}
+                <li class="nav-header"><b>TABLAS BÁSICAS</b></li>
+                <li class="nav-item">
+                    <a href="{% url 'crud:method_list' %}" class="nav-link">
+                        <i class="nav-icon fas fa-money-check-alt"></i>
+                        <p class="p-nav">
+                            Métodos de pago
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'crud:category_list' %}" class="nav-link">
+                        <i class="nav-icon fas fa-tags"></i>
+                        <p class="p-nav">
+                            Categorías de productos
+                        </p>
+                    </a>
+                </li>
+                <!-- <li class="nav-item">
+                    <a href="{% url 'crud:brand_list' %}" class="nav-link">
+                        <i class="nav-icon fas fa-tags"></i>
+                        <p class="p-nav">
+                            Marcas de productos
+                        </p>
+                    </a>
+                </li> -->
+                <li class="nav-item">
+                    <a href="{% url 'crud:type_list' %}" class="nav-link">
+                        <i class="nav-icon fas fa-shapes"></i>
+                        <p class="p-nav">
+                            Tipos de productos
+                        </p>
+                    </a>
+                </li>
+                <hr class="hr_division">
+            </ul>
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                <li class="nav-header"><b></b>TABLAS DE GESTIÓN</b></li>
+                <li class="nav-item">
+                    <a href="{% url 'crud:companyinfo' %}" class="nav-link">
+                        <i class="nav-icon fas fa-building"></i>
+                        <p class="p-nav">
+                            Datos empresa
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'user:users_list' %}" class="nav-link">
+                        <i class="nav-icon fas fa-user-md"></i>
+                        <p class="p-nav">
+                            Usuarios
+                        </p>
+                    </a>
+                </li>
+                <hr class="hr_division">
+            </ul>
+            {% endif %}
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                <li class="nav-header"><b></b>SALIR</b></li>
+                <li class="nav-item">
+                    <a href="{% url 'logout' %}" class="nav-link">
+                        <i class="nav-icon fas fa-power-off"></i>
+                        <p class="p-nav">
+                            Cerrar sesión
+                        </p>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</aside>

@@ -1,0 +1,105 @@
+{% extends 'list.html' %}
+{% load static %}
+
+{% block head_list %}
+<script src="{% static 'lib/moment-2.25.3/moment-with-locales.js' %}"></script>
+<script src="{% static 'lib/tempusdominus-bootstrap-4/tempusdominus-bootstrap-4.min.js' %}"></script>
+<link href="{% static 'lib/tempusdominus-bootstrap-4/tempusdominus-bootstrap-4.min.css' %}" rel="stylesheet" />
+
+<script src="{% static 'sale/js/list.js' %}"></script>
+{% endblock %}
+
+{% block grow1 %}
+<div class="d-flex flex-nowrap">
+    <input type="date" class="form-control" name="input-date" id="input-date">
+    <input type="date" class="form-control" name="input-date-2" id="input-date-2">
+</div>
+{% endblock %}
+
+{% block columns %}
+<tr>
+    <th scope="col" style="width: 10%;">Usuario</th>
+    <th scope="col" style="width: 10%;">Fecha</th>
+    <th scope="col" style="width: 10%;">Nº Factura</th>
+    <th scope="col" style="width: 5%;">Tipo</th>
+    <th scope="col" style="width: 5%;">Estado</th>
+    <th scope="col" style="width: 30%;">Cliente</th>
+    <th scope="col" style="width: 10%;">Total ($).</th>
+    <th scope="col" style="width: 20%;">Opciones</th>
+</tr>
+{% endblock %}
+
+{% block rows %}
+
+{% endblock %}
+
+{% block buttons_list %}
+<a href="#" class="btn btn-outline-info btn-report-sales">
+    <i class="fas fa-file-alt"></i> <span> Generar reporte de ventas</span></a>
+
+<a href="#" class="btn btn-outline-info btn-report-product">
+    <i class="fas fa-boxes"></i> <span> Generar reporte de productos</span></a>
+{% endblock %}
+
+{% block javascript %}
+<div class="modal sx" id="modalDetails" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info justify-content-center">
+                <h5 class="modal-title"><i class="fas text-dark fa-city"></i><i
+                        class="fas text-dark fa-shopping-cart"></i> DETALLES DE LA VENTA</h5>
+            </div>
+            <div class="modal-body">
+                <div class="container-fluid text-center" id="detailsVent"></div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal New Office Guide -->
+<div class="modal fade" id="formOfficeGuide" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <form method="post" action="." enctype="multipart/form-data" id="form" class="formOfficeGuide">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <b><i class="fas text-primary fa-file-invoice"></i> <i class="fas text-primary fa-truck"></i>
+                            <span></span>GENERAR ORDEN DE ENTREGA</b>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <input name="action" type="hidden" value="createOffice">
+                        <input name="number_sale" type="hidden" value="">
+                        {% for field in formOrder.visible_fields %}
+                        <div class="form-group">
+                            <label>{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-outline-info btn-block"><i class="fas fa-save"></i> Generar
+                        Orden de Entrega</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<script>
+    $('#form-control-sede').on('change', function () {
+        var select = document.getElementById('form-control-sede');
+        var sede = this.options[select.selectedIndex];
+
+        localStorage.setItem('sede', sede.value);
+
+        window.location.reload();
+    });
+</script>
+{% endblock %}

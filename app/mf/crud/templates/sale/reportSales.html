@@ -1,0 +1,188 @@
+{% load static %} {% load humanize %}
+<!DOCTYPE html>
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<style>
+    .img-invoice {
+        width: 120px;
+        padding: 15px;
+    }
+
+    .img-lirax {
+        width: 320px;
+    }
+
+    #invoice thead tr th {
+        text-align: left;
+        border-bottom: 1px solid black;
+        border-top: 1px solid black;
+        padding-top: 4px;
+    }
+
+    #invoice thead tr {
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    #invoice tbody tr {
+        padding: 0;
+    }
+
+    #invoice2 thead tr th {
+        text-align: left;
+        border-bottom: 1px solid black;
+        border-top: 1px solid black;
+        padding-top: 4px;
+    }
+
+    #invoice2 thead tr {
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    #invoice2 tbody tr {
+        padding: 0;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+</style>
+
+<body>
+    <table id="tb">
+        <thead>
+            <tr>
+                <th style="width: 20%; text-align: left;"><img src="{{ icon }}" class="img-invoice"></th>
+                <th style="width: 82%; text-align: left;">
+                    <div>
+                        <span style="font-size: 18px;">{{ comp.name|upper }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;"><b>R.I.F.:</b> {{ comp.nit }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;"><b>Domicilio Fiscal</b>:
+                            {{ comp.address }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;">{{ comp.services }}</span><br><br>
+                        <span style="font-size: 13px; font-weight: 600;"><b>Teléfono:</b> </span>
+                        <span style="font-size: 13px; font-weight: 300;"> {{ comp.phone }} </span><br>
+                        <span style="font-size: 13px; font-weight: 600;"> Correo: </span>
+                        <span style="font-size: 13px; font-weight: 300;">
+                            {{ comp.email }}</span><br>
+                    </div>
+                </th>
+            </tr>
+        </thead>
+    </table><br>
+    <table>
+        <thead>
+            <tr>
+                <th style="font-size: 10px; text-align: left;">RESUMEN DE VENTAS {{ day }} </th>
+            </tr>
+        </thead>
+    </table><br><br>
+    <span style="font-size: 10px; font-weight: 600; text-align: left;">1. TIPOS DE VENTAS</span><br>
+    <table id="invoice">
+        <thead>
+            <tr>
+                <th style="font-size: 10px;">Tipo</th>
+                <th style="font-size: 10px; width: 10%; text-align: center;">Cantidad</th>
+                <th style="font-size: 10px; width: 20%; text-align: center;">Totales</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="padding-top: 4px;">
+                <td style="font-size: 10px; padding-top: 3px;">Al contado</td>
+                <td style="font-size: 10px; text-align: center;">{{ detTypeSales.cash|floatformat:2 }}</td>
+                <td style="font-size: 10px; text-align: center;">{{ detTypeSales.totalCash|floatformat:2 }}</td>
+            </tr>
+            <tr style="padding-top: 4px;">
+                <td style="font-size: 10px;">A crédito</td>
+                <td style="font-size: 10px; text-align: center;">{{ detTypeSales.credit|floatformat:2 }}</td>
+                <td style="font-size: 10px; text-align: center;">{{ detTypeSales.totalCredit|floatformat:2 }}</td>
+            </tr>
+            <tr style="border-top: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px; text-align: center;">TOTALES</td>
+                <td style="font-size: 10px; text-align: center;">{{ totalTypeSales|floatformat:2 }} $</td>
+            </tr>
+        </tbody>
+    </table><br>
+    <span style="font-size: 10px; font-weight: 600; text-align: left;">2. VENTAS CON DESCUENTOS</span><br>
+    <table id="invoice">
+        <thead>
+            <tr>
+                <th style="font-size: 10px; width: 15%;">Fecha</th>
+                <th style="font-size: 10px; width: 15%; text-align: center;">Factura</th>
+                <th style="font-size: 10px; width: 50%; text-align: left;">Cliente</th>
+                <th style="font-size: 10px; width: 20%; text-align: center;">Descuento ($)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in discountSales %}
+            <tr style="border-bottom: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px; padding-top: 3px;">{{ d.date }}</td>
+                <td style="font-size: 10px; text-align: center;">{{ d.invoice }}</td>
+                <td style="font-size: 10px; text-align: left;">{{ d.client }}</td>
+                <td style="font-size: 10px; text-align: center; padding-top: 3px;">{{ d.discount }} $</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px; text-align: right;">TOTAL</td>
+                <td style="font-size: 10px; text-align: center;">{{ totalDiscounts|floatformat:2 }} $</td>
+            </tr>
+        </tbody>
+    </table><br><br>
+    <span style="font-size: 10px; font-weight: 600; text-align: left;">3. INGRESOS POR MÉTODOS DE PAGO</span><br>
+    <table id="invoice">
+        <thead>
+            <tr>
+                <th style="font-size: 10px;">Método</th>
+                <th style="font-size: 10px; width: 15%; text-align: center;">Cantidad</th>
+                <th style="font-size: 10px; width: 15%; text-align: center;">Total Bs.</th>
+                <th style="font-size: 10px; width: 20%; text-align: center;">Total $.</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in payMethod %}
+            <tr style="padding-top: 3px;">
+                <td style="font-size: 10px;">{{ d.method }}</td>
+                <td style="font-size: 10px; text-align: center;">{{ d.quantity|floatformat:2 }} </td>
+                <td style="font-size: 10px; text-align: center;">{{ d.total_bs|floatformat:2 }}</td>
+                <td style="font-size: 10px; text-align: center;">{{ d.total|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px; text-align: center;">TOTALES</td>
+                <td style="font-size: 10px; text-align: center;">{{ totalsBs|floatformat:2 }} Bs</td>
+                <td style="font-size: 10px; text-align: center;">{{ totals|floatformat:2 }} $</td>
+            </tr>
+        </tbody>
+    </table><br><br>
+    <span style="font-size: 10px; font-weight: 600; text-align: left;">4. ABONOS DE VENTAS A CRÉDITO</span><br>
+    <table id="invoice">
+        <thead>
+            <tr>
+                <th style="font-size: 10px; width: 20%;">Fecha</th>
+                <th style="font-size: 10px; width: 60%; text-align: left;">Cliente</th>
+                <th style="font-size: 10px; width: 20%; text-align: center;">Cantidad ($)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in payments %}
+            <tr style="border-bottom: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px; padding-top: 3px;">{{ d.date }}</td>
+                <td style="font-size: 10px; text-align: left;">{{ d.client }}</td>
+                <td style="font-size: 10px; text-align: center; padding-top: 3px;">{{ d.quantity }} $</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px; text-align: right;">TOTAL</td>
+                <td style="font-size: 10px; text-align: center;">{{ totalPayments|floatformat:2 }} $</td>
+            </tr>
+        </tbody>
+    </table><br><br>
+</body>
+
+</html>

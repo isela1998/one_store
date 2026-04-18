@@ -1,0 +1,81 @@
+{% extends 'list.html' %} {% load widget_tweaks %} {% load static %} {% block head_list %}
+<script src="{% static 'companyInfo/js/list.js' %}"></script>
+
+{% endblock %} {% block grow1 %}
+{% endblock %} {% block content %}
+<div class="card card-default">
+    <div class="card-header bg-info">
+        <h3 class="card-title">
+            <i class="fas fa-plus"></i>
+            <i class="fas fa-city"></i> Información básica de la empresa
+        </h3>
+    </div>
+    <div class="card-body" style="background-color: rgb(241, 238, 238);">
+        <form action="POST" class="formCompanyInfo" enctype=" multipart/form-data">
+            <input type="hidden" name="action" value="edit">
+            <label for="logo">LOGO</label><br>
+            <input type="file" name="logo" id="logo" disabled>
+            <div class="d-flex flex-row flex-wrap justify-content-beetwen">
+                <div class="p-2 justify-content-center text-center">
+                    <div class="div-logo-company-info">
+                        <img src="/media/{{ data.logo }}" alt="Logo" class="img-fluid p-4" id="logo">
+                    </div><br><br>
+                    <div class="d-flex flex-row flex-wrap justify-content-center flex-fill p-2">
+                        <div class="form-group p-1">
+                            <button type="button" class="btn btn-outline-info btn-edit-data" id="btn-edit-data"><i
+                                    class="fas fa-edit text-dark"></i> <span class="text-dark">Editar
+                                    datos</span></button>
+                        </div>
+                        <div class="form-group p-1">
+                            <button type="submit" class="btn btn-outline-success btn-save-changes"><i
+                                    class="fas fa-save text-dark"></i>
+                                <span class="text-dark">Guardar cambios</span></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="ml-4 flex-grow-1">
+                    <div class="form-group">
+                        <label for="id_name">{{ form.name.label }}</label>
+                        {{ form.name }}
+                    </div>
+                    <div class="d-flex flex-row flex-wrap">
+                        <div class="form-group flex-fill">
+                            <label for="id_comercialName">{{ form.comercialName.label }}</label>
+                            {{ form.comercialName }}
+                        </div>
+                        <div class="form-group flex-fill">
+                            <label for="id_nit">{{ form.nit.label }}</label>
+                            {{ form.nit }}
+                        </div>
+                    </div>
+                    <div class="d-flex flex-row flex-wrap">
+                        <div class="form-group flex-fill">
+                            <label for="id_address">{{ form.address.label }}</label>
+                            {{ form.address }}
+                        </div>
+                        <div class="form-group flex-fill">
+                            <label for="id_city">{{ form.city.label }}</label>
+                            {{ form.city }}
+                        </div>
+                    </div>
+                    <div class="d-flex flex-row flex-wrap">
+                        <div class="form-group flex-fill">
+                            <label for="id_phone">{{ form.phone.label }}</label>
+                            {{ form.phone }}
+                        </div>
+                        <div class="form-group flex-fill">
+                            <label for="id_email">{{ form.email.label }}</label>
+                            {{ form.email }}
+                        </div>
+                    </div>
+                    <label for="id_services">{{ form.services.label }}</label>
+                    {{ form.services }}
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="card-footer">
+    </div>
+</div>
+{% endblock %} {% block javascript %}
+{% endblock %}

@@ -1,0 +1,167 @@
+{% load static %} {% load humanize %}
+<!DOCTYPE html>
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>NOTA DE ENTREGA</title>
+<style>
+    .img-invoice {
+        width: 120px;
+        padding: 15px;
+    }
+
+    .img-lirax {
+        width: 320px;
+    }
+
+    #invoice thead tr th {
+        text-align: left;
+        border-bottom: 1px solid black;
+        border-top: 1px solid black;
+        padding-top: 4px;
+    }
+
+    #invoice thead tr {
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    #invoice tbody tr {
+        padding: 0;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+</style>
+
+<body>
+    <table id="tb">
+        <thead>
+            <tr>
+                <th style="width: 20%; text-align: left;"><img src="{{ icon }}" class="img-invoice"></th>
+                <th style="width: 82%; text-align: left;">
+                    <div>
+                        <span style="font-size: 18px;">{{ comp.name|upper }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;"><b>R.I.F.:</b> {{ comp.nit }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;"><b>Domicilio Fiscal</b>:
+                            {{ comp.address }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;">{{ comp.services }}</span><br><br>
+                        <span style="font-size: 13px; font-weight: 600;"><b>Teléfono:</b> </span>
+                        <span style="font-size: 13px; font-weight: 300;"> {{ comp.phone }} </span><br>
+                        <span style="font-size: 13px; font-weight: 600;"> Correo: </span>
+                        <span style="font-size: 13px; font-weight: 300;">
+                            {{ comp.email }}</span><br>
+                    </div>
+                </th>
+            </tr>
+        </thead>
+    </table><br>
+    <span style="font-size: 14px; font-weight: 600; text-align: center;">NOTA DE ENTREGA</span>
+    <table>
+        <thead>
+            <tr>
+                <th
+                    style="width: 60%; font-size: 12px; text-align: left; border-style: double; border: gray; padding: 5px;">
+                    <span style="font-size: 14px;">Nombre o Razon Social:</span><br>
+                    <span style="font-size: 14px; font-weight: 300;">{{ sale.client.names|upper }}</span><br>
+                    <span style="font-size: 14px;">Dirección Fiscal: </span><br>
+                    <span style="font-size: 14px; font-weight: 300;">{{ sale.client.address|upper }}</span><br><br>
+                    <span style="font-size: 14px;">C.I./R.I.F: </span>
+                    <span style="font-size: 14px; font-weight: 300;">
+                        {{ sale.client.identity|upper }}{{sale.client.ci|upper}} </span>
+                    <pre style='display:inline'>&#09;</pre>
+                    <span style="font-size: 14px;">Contacto: </span>
+                    <span style="font-size: 14px; font-weight: 300;">{{ sale.client.contact|upper }}</span>
+                </th>
+                <th
+                    style="width: 40%; font-size: 12px; text-align: left; border-style: double; border: gray; padding: 5px;">
+                    <span style="font-size: 15px;">Nota de Entrega Nº: </span>
+                    <span style="font-size: 15px;">{{ sale.invoice_number }}</span> <br>
+                    <span style="font-weight: 300;">Fecha: </span> <span style="font-weight: 300;">
+                        {{ sale.datejoined }}</span><br>
+                </th>
+            </tr>
+        </thead>
+    </table><br>
+    <table id="invoice">
+        <thead>
+            <tr>
+                <th style="width: 15%; font-size: 13px;">CÓDIGO</th>
+                <th style="width: 40%; font-size: 13px;">PRODUCTO</th>
+                <th style="width: 15%; font-size: 13px; text-align: center;">CANT</th>
+                <th style="width: 15%; font-size: 13px; text-align: center;">UNIT.</th>
+                <th style="width: 15%; font-size: 13px; text-align: right;">TOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in sale.detsale_set.all %}
+            <tr {% if forloop.first %}style="padding-top: 3px;" {% endif %}>
+                <td style="font-size: 12px;">{{ d.prod.code }}</td>
+                <td style="font-size: 12px;">{{ d.prod.brand }} {{ d.prod.product }} ({{ d.prod.type_product.name }})
+                </td>
+                <td style="font-size: 12px; text-align: center;">{{ d.quantity }}</td>
+                <td style="font-size: 12px; text-align: center;">{{ d.price }}</td>
+                <!-- <td style="font-size: 12px; text-align: center;">{{ d.price|intcomma }}Bs.</td> -->
+                <td style="font-size: 12px; text-align: right;">{{ d.total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table><br><br><br><br>
+    <table style="margin-top: 400%;">
+        <thead>
+            <tr>
+                <th
+                    style="width: 50%; font-size: 12px; text-align: left; border-style: double; border: gray; padding: 5px;">
+                    <pre style='display:inline'>&#09;</pre>
+                    <span style="font-size: 14px;">Observaciones: <br><br></span><br>
+                    <pre style='display:inline'>&#09;</pre>
+                    <pre style='display:inline'>&#09;</pre>
+                    <span style="font-size: 14px; text-align: center;"> Modeda: </span>
+                    <span style="font-size: 14px; text-align: center; font-weight: 300;">$<br></span>
+                    <pre style='display:inline'>&#09;</pre>
+                </th>
+                <th
+                    style="width: 50%; font-size: 12px; text-align: left; border-style: double; border: gray; padding: 5px;">
+                    <span style="font-size: 14px;">Totales: <br><br></span><br>
+                    <pre style='display:inline'>&#09;</pre>
+                    <span style="font-size: 14px; text-align: center;"> Sub-Total: </span>
+                    <span style="font-size: 14px; text-align: center; font-weight: 300;">{{ sale.subtotal }}<br></span>
+                    <pre style='display:inline'>&#09;</pre>
+                    <span style="font-size: 14px; text-align: center;"> Descuento: </span>
+                    <span style="font-size: 14px; text-align: center; font-weight: 300;">{{ sale.discount }}<br></span>
+                    <pre style='display:inline'>&#09;</pre>
+                    <span style="font-size: 14px; text-align: center;"> TOTAL: </span>
+                    <span style="font-size: 14px; text-align: center; font-weight: 300;">
+                        {{ sale.total }}<br><br><br><br></span>
+                </th>
+            </tr>
+        </thead>
+    </table><br><br><br><br><br><br><br><br>
+    <table style="margin-bottom: 10px;">
+        <thead>
+            <tr>
+                <th style="width: 30%;">
+                </th>
+                <th style="width: 5%"></th>
+                <th style="width: 30%; font-size: 12px;">
+                    <br><span>{{ comp.name|upper }}</span><br>
+                    <span>FIRMA Y SELLO</span><br>
+                </th>
+                <th style="width: 5%"></th>
+                <th style="width: 30%;">
+                </th>
+            </tr>
+        </thead>
+    </table><br><br><br>
+    <table style="margin-bottom: 10px; border-top-style: double; border-top: gray;">
+        <thead>
+            <tr>
+                <th style="width: 100%; font-size: 12px; padding-top: 5px;">
+                    <span>ESTA NOTA DE ENTREGA VA SIN TACHADURA, NI ENMENDADURA</span><br>
+                    <span style="font-weight: 300;">SIN DERECHO A CRÉDITO FISCAL</span>
+                </th>
+            </tr>
+        </thead>
+    </table><br>
+
+</html>

@@ -1,0 +1,120 @@
+{% load static %} {% load humanize %}
+<!DOCTYPE html>
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Inventario</title>
+<style>
+    .img-invoice {
+        width: 120px;
+    }
+
+    @page {
+        size: letter landscape;
+        margin: 2cm;
+    }
+
+    #invoice thead tr th {
+        text-align: left;
+        border-bottom: 1px solid black;
+        border-top: 1px solid black;
+        padding-top: 4px;
+    }
+
+    #invoice thead tr {
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    #invoice tbody tr {
+        padding: 0;
+    }
+
+    #details thead tr th {
+        text-align: left;
+        border-top: 1px solid black;
+        padding-top: 4px;
+    }
+
+    #details tbody tr {
+        padding: 0;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+</style>
+
+<body>
+    <table id="tb">
+        <thead>
+            <tr>
+                <th style="width: 20%; text-align: left;"><img src="{{ icon }}" class="img-invoice"></th>
+                <th style="width: 82%; text-align: left;">
+                    <div>
+                        <span style="font-size: 18px;">{{ comp.name|upper }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;"><b>R.I.F.:</b> {{ comp.nit }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;"><b>Domicilio Fiscal</b>:
+                            {{ comp.address }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;">{{ comp.services }}</span><br><br>
+                        <span style="font-size: 13px; font-weight: 600;"><b>Teléfono:</b> </span>
+                        <span style="font-size: 13px; font-weight: 300;"> {{ comp.phone }} </span><br>
+                        <span style="font-size: 13px; font-weight: 600;"> Correo: </span>
+                        <span style="font-size: 13px; font-weight: 300;">
+                            {{ comp.email }}</span><br>
+                    </div>
+                </th>
+            </tr>
+        </thead>
+    </table><br>
+    <span style="font-size: 14px; font-weight: 300;">REPORTE DE INVENTARIO ({{ today }})</span>
+    <table id="invoice" style="width:auto;">
+        <thead>
+            <tr>
+                <th style="width: 20%; font-size: 13px;">Categ.</th>
+                <th style="width: 20%; font-size: 13px;">Código</th>
+                <th style="width: 45%; font-size: 13px;">Producto</th>
+                <!-- <th style="width: 15%; font-size: 13px; text-align: center;">Precio</th> -->
+                <th style="width: 15%; font-size: 13px; text-align: center;">Inventario</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in data %}
+            <tr {% if forloop.first %}style="padding-top: 3px;" {% endif %}>
+                <td style="font-size: 13px;">{{ d.category.name }}</td>
+                <td style="font-size: 13px;">{{ d.code }}</td>
+                <td style="font-size: 13px;">{{ d.brand }} {{ d.product }} ({{ d.type_product.name }})</td>
+                <!-- <td style="font-size: 13px; text-align: center;">{{ d.price_dl }}</td> -->
+                <td style="font-size: 13px; text-align: center;">{{ d.quantity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <table id="details" style="width:auto;">
+        <thead>
+            <tr>
+                <th style="width: 20%;"></th>
+                <th style="width: 20%;"></th>
+                <th style="width: 45%;"></th>
+                <th style="width: 15%;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr {% if forloop.first %}style="padding-top: 3px;" {% endif %}>
+                <td></td>
+                <td></td>
+                <td style="font-size: 14px; text-align: right; margin-right: 20px;">Total Inventario</td>
+                <td style=" font-size: 14px; text-align: center;"> {{ totalInventary }} </td>
+            </tr>
+        </tbody>
+    </table>
+    <table style="margin-top: 350%;">
+        <thead>
+            <tr>
+                <th style="font-size: 12px; text-align: left; border-style: double; border: gray; padding: 3px;">
+                    <span style="font-size: 14px;">Observaciones: <br><br><br><br><br><br></span>
+                </th>
+            </tr>
+        </thead>
+    </table><br><br><br><br><br>
+
+</html>

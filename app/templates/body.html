@@ -1,0 +1,48 @@
+{% extends 'home.html' %}
+{% block body %}
+<body class="hold-transition sidebar-mini layout-fixed sidebar-collapse">
+    <div class="wrapper">
+        <!-- Header -->
+        {% include 'header.html' %}
+        <!-- Sidebar -->
+        {% include 'sidebar.html' %}
+        <!-- Content -->
+        {% block wrapper %}
+        <div class="content-wrapper">
+            <div class="content-header">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <h1 class="m-0 text-dark">{{ title_pag }}</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endblock %}
+            <div class="content">
+                <div class="container-fluid">
+                    {% block content %}
+
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+        <!-- Footer -->
+        {% include 'footer.html' %}
+    </div>
+    <!-- Block javascript -->
+    {% block javascript %}
+
+    {% endblock %}
+<script>
+'{% if messages %}'
+    var html = '<p>';
+    '{% for msg in messages %}'
+        html += '{{ msg }}<br>';
+    '{% endfor  %}'
+    html += '</p>';
+    alertSweetError(html);
+'{% endif %}'
+</script>
+</body>
+{% endblock %}

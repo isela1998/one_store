@@ -1,0 +1,203 @@
+{% extends 'list.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% block head %}
+<!-- fullCalendar -->
+<link rel="stylesheet" href="{% static 'lib/adminlte-3.0.5/plugins/fullcalendar/main.min.css' %}">
+<link rel="stylesheet" href="{% static 'lib/adminlte-3.0.5/plugins/fullcalendar-daygrid/main.min.css' %}">
+<link rel="stylesheet" href="{% static 'lib/adminlte-3.0.5/plugins/fullcalendar-timegrid/main.min.css' %}">
+<link rel="stylesheet" href="{% static 'lib/adminlte-3.0.5/plugins/fullcalendar-bootstrap/main.min.css' %}">
+
+<!-- DataTables -->
+<link rel="stylesheet" href="{% static 'lib/datatables-1.10.20/css/dataTables.bootstrap4.min.css' %}" />
+<link rel="stylesheet"
+  href="{% static 'lib/datatables-1.10.20/plugins/responsive-2.2.3/css/responsive.bootstrap4.min.css' %}" />
+<script src="{% static 'lib/datatables-1.10.20/js/jquery.dataTables.js' %}"></script>
+<script src="{% static 'lib/datatables-1.10.20/js/dataTables.bootstrap4.min.js' %}"></script>
+<script src="{% static 'lib/datatables-1.10.20/plugins/responsive-2.2.3/js/dataTables.responsive.min.js' %}"></script>
+<script src="{% static 'lib/datatables-1.10.20/plugins/responsive-2.2.3/js/responsive.bootstrap4.min.js' %}"></script>
+
+<script src="{% static 'lib/moment-2.25.3/moment-with-locales.js' %}"></script>
+<script src="{% static 'lib/tempusdominus-bootstrap-4/tempusdominus-bootstrap-4.min.js' %}"></script>
+<link href="{% static 'lib/tempusdominus-bootstrap-4/tempusdominus-bootstrap-4.min.css' %}" rel="stylesheet" />
+
+<!-- Functions -->
+<script src="{% static 'js/calendar/js.js' %}"></script>
+{% endblock %}
+
+{% block grow1 %}
+{% endblock %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-4">
+        <div class="sticky-top mb-3">
+          <div class="card text-dark">
+            <div class="card-header border-0 text-white" style="background-color: #fff;">
+              <h3 class="card-title">
+                <i class="fas fa-plus mr-1"></i><i class="fas fa-calendar-alt mr-1"></i>
+                Agregar Permiso o Evento
+              </h3>
+              <div class="card-tools">
+                <button type="button" class="btn bg-light btn-sm" data-card-widget="collapse">
+                  <i class="fas fa-minus"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <form method="POST" action=".">
+                <input type="hidden" name="action" value="add">
+                <div class="d-flex flex-row flex-nowrap">
+                  <div class="form-group wd-60">
+                    <label for="id_name">Permiso/Evento:</label>
+                    {{ form.name }}
+                  </div>
+                  <div class="form-group wd-40">
+                    <label for="id_day">Fecha:</label>
+                    {{ form.day }}
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Descripción:</label>
+                  {{ form.description }}
+                </div>
+                <div class="d-flex">
+                  <div class="btn-group" style="width: 100%; margin-bottom: 10px;">
+                    <ul class="fc-color-picker" id="color-chooser">
+                      <li><a class="text-primary" href="#"><i class="fas fa-square"></i></a></li>
+                      <li><a class="text-warning" href="#"><i class="fas fa-square"></i></a></li>
+                      <li><a class="text-info" href="#"><i class="fas fa-square"></i></a></li>
+                      <li><a class="text-success" href="#"><i class="fas fa-square"></i></a></li>
+                      <li><a class="text-danger" href="#"><i class="fas fa-square"></i></a></li>
+                      <li><a class="text-secondary" href="#"><i class="fas fa-square"></i></a></li>
+                    </ul>
+                  </div>
+                  <button type="submit" style="color: black!important;" class="btn btn-outline-success">Agregar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          <div class="card text-dark collapsed-card">
+            <div class="card-header border-0 text-white">
+              <h3 class="card-title">
+                <i class="fas fa-history mr-1"></i><i class="fas fa-calendar-alt mr-1"></i>
+                Eventos y Permisos
+              </h3>
+              <div class="card-tools">
+                <button type="button" class="btn bg-light btn-sm" data-card-widget="collapse">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div style="overflow-x:auto;">
+                <table class="table text-left" data-page-length='10' id="data">
+                  <thead>
+                    <tr>
+                      <th scope="col">Permiso/Evento</th>
+                      <th scope="col"><i class="fas fa-minus"></i></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-8">
+        <div class="card card-primary">
+          <div class="card-body p-0">
+            <!-- THE CALENDAR -->
+            <div id="calendar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+</section>
+{% endblock %}
+</div>
+{% block javascript %}
+<!-- Full Calendar -->
+<script src="{% static 'lib/adminlte-3.0.5/plugins/fullcalendar/main.min.js' %}"></script>
+<script src="{% static 'lib/adminlte-3.0.5/plugins/fullcalendar-daygrid/main.min.js' %}"></script>
+<script src="{% static 'lib/adminlte-3.0.5/plugins/fullcalendar-timegrid/main.min.js' %}"></script>
+<script src="{% static 'lib/adminlte-3.0.5/plugins/fullcalendar-interaction/main.min.js' %}"></script>
+<script src="{% static 'lib/adminlte-3.0.5/plugins/fullcalendar-bootstrap/main.min.js' %}"></script>
+<script src="{% static 'lib/adminlte-3.0.5/plugins/fullcalendar/locales/es.js' %}"></script>
+<script>
+  var viewCalendar;
+  var Calendar = FullCalendar.Calendar;
+  var calendarEl = document.getElementById('calendar');
+  var calendar;
+
+  function get_events() {
+    $.ajax({
+      url: window.location.pathname,
+      type: 'POST',
+      data: {
+        'action': 'get_events',
+      },
+      dataType: 'json',
+    }).done(function (data) {
+      if (!data.hasOwnProperty('error')) {
+        calendar = new Calendar(calendarEl, {
+          locale: 'es',
+          timeZone: 'UTC',
+          plugins: ['bootstrap', 'dayGrid', 'timeGrid'],
+          header: {
+            left: 'prev,next',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+          },
+          'themeSystem': 'bootstrap',
+          events: data,
+          editable: false,
+        });
+        calendar.render();
+      }
+    });
+  }
+
+  $(function () {
+    get_events();
+  });
+
+  let currColor = '#3c8dbc'
+  let colorChooser = $('#color-chooser-btn')
+  $('#color-chooser > li > a').click(function (e) {
+    e.preventDefault()
+    currColor = $(this).css('color')
+  })
+
+  $('form').on('submit', function (e) {
+    e.preventDefault();
+    let parameters = new FormData(this);
+    parameters.append('css', currColor);
+    $.ajax({
+      url: window.location.pathname,
+      type: 'POST',
+      data: parameters,
+      dataType: 'json',
+      processData: false,
+      contentType: false,
+    }).done(function (data) {
+      if (!data.hasOwnProperty('error')) {
+        $("input[name='name']").val('');
+        $("textarea[name='description']").val('');
+        alertSweetSuccess('Eventos Actualizados');
+        setTimeout(tableEvents.ajax.reload(), 5000);
+        calendar.destroy();
+        get_events();
+      } else {
+        // Pass
+      }
+    });
+  });
+</script>
+
+{% endblock %}

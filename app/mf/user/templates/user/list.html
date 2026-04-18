@@ -1,0 +1,87 @@
+{% extends 'list.html' %}
+{% load widget_tweaks %}
+{% load static %}
+
+{% block head_list %}
+<script src="{% static 'user/js/list.js' %}"></script>
+<script src="{% static 'js/functions.js' %}"></script>
+<script src=""></script>
+{% endblock %}
+
+{% block grow1 %}
+{% endblock %}
+
+{% block columns %}
+<tr>
+    <th scope="col" style="width: 10%;">Perfil</th>
+    <th scope="col" style="width: 20%;">Fecha|Registro</th>
+    <th scope="col" style="width: 40%;">Nombres|Apellidos</th>
+    <th scope="col" style="width: 20%;">Usuario</th>
+    <th scope="col" style="width: 10%;">Opciones</th>
+</tr>
+{% endblock %}
+
+{% block rows %}
+
+{% endblock %}
+
+{% block buttons_list %}
+<a class="btn btn-outline-info btnAddUser">
+    <i class="fas fa-plus"></i> <i class="fas fa-users-cog"></i> <span> Nuevo
+        usuario</span></a>
+{% endblock %}
+
+{% block javascript %}
+<!-- Modal -->
+<div class="modal fade" id="modalUsers" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <form method="post" action="." enctype="multipart/form-data">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <b></i><i class="fas fa-users-cog"></i>
+                            <span>Usuario</span></b>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <input name="action" type="hidden" value="add">
+                        <input name="sede" type="hidden" value="">
+                        <input name="id" id="id" type="hidden" value="0">
+                        <div class="form-group">
+                            <label for='id_first_name'>Permisos</label>
+                            <select name="group" class="form-select form-control" aria-label="Nader">
+                                <option value="1">Todos los permisos</option>
+                                <option value="3">Usuario de venta</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for='id_first_name'>{{ form.first_name.label }}</label>
+                            {{ form.first_name }}
+                        </div>
+                        <div class="form-group">
+                            <label for='id_last_name'>{{ form.last_name.label }}</label>
+                            {{ form.last_name }}
+                        </div>
+                        <div class="form-group">
+                            <label for='id_username'>Usuario</label>
+                            {{ form.username }}
+                        </div>
+                        <div class="form-group">
+                            <label for='id_password'>{{ form.password.label }}</label>
+                            {{ form.password }}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" id="btn_submit" class="btn btn-outline-success btn-block"><i
+                            class="fas fa-save"></i> Guardar</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

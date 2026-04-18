@@ -1,0 +1,107 @@
+{% load static %} {% load humanize %}
+<!DOCTYPE html>
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<style>
+    .img-invoice {
+        width: 120px;
+        padding: 15px;
+    }
+
+    .img-lirax {
+        width: 320px;
+    }
+
+    #invoice thead tr th {
+        text-align: left;
+        border-bottom: 1px solid black;
+        border-top: 1px solid black;
+        padding-top: 4px;
+    }
+
+    #invoice thead tr {
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    #invoice tbody tr {
+        padding: 0;
+    }
+
+    #invoice2 thead tr th {
+        text-align: left;
+        border-bottom: 1px solid black;
+        border-top: 1px solid black;
+        padding-top: 4px;
+    }
+
+    #invoice2 thead tr {
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    #invoice2 tbody tr {
+        padding: 0;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+</style>
+
+<body>
+    <table id="tb">
+        <thead>
+            <tr>
+                <th style="width: 20%; text-align: left;"><img src="{{ icon }}" class="img-invoice"></th>
+                <th style="width: 82%; text-align: left;">
+                    <div>
+                        <span style="font-size: 18px;">{{ comp.name|upper }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;"><b>R.I.F.:</b> {{ comp.nit }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;"><b>Domicilio Fiscal</b>:
+                            {{ comp.address }}</span><br>
+                        <span style="font-size: 14px; font-weight: 300;">{{ comp.services }}</span><br><br>
+                        <span style="font-size: 13px; font-weight: 600;"><b>Teléfono:</b> </span>
+                        <span style="font-size: 13px; font-weight: 300;"> {{ comp.phone }} </span><br>
+                        <span style="font-size: 13px; font-weight: 600;"> Correo: </span>
+                        <span style="font-size: 13px; font-weight: 300;">
+                            {{ comp.email }}</span><br>
+                    </div>
+                </th>
+            </tr>
+        </thead>
+    </table><br>
+    <table>
+        <thead>
+            <tr>
+                <th style="font-size: 10px; text-align: left;">REPORTE DE CUENTAS POR PAGAR {{ day }} </th>
+            </tr>
+        </thead>
+    </table><br><br>
+    <table id="invoice">
+        <thead>
+            <tr>
+                <th style="font-size: 10px; width: 20%;">Fecha creación</th>
+                <th style="font-size: 10px; text-align: left;">Cliente</th>
+                <th style="font-size: 10px; width: 20%; text-align: center;">Total ($)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in allDebts %}
+            <tr style="border-bottom: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px; padding-top: 3px;">{{ d.dateformat }}</td>
+                <td style="font-size: 10px; text-align: left;"> {{ d.name }}
+                </td>
+                <td style="font-size: 10px; text-align: center;">{{ d.totalDebt }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px; text-align: right;">TOTAL</td>
+                <td style="font-size: 10px; text-align: center;">{{ total|floatformat:2 }} $</td>
+            </tr>
+        </tbody>
+    </table><br><br>
+</body>
+
+</html>

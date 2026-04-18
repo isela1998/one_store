@@ -1,0 +1,90 @@
+{% extends 'layout.html' %} {% load static %} {% load humanize %} {% block head %}
+<link rel="stylesheet" href="{% static 'lib/datatables-1.10.20/css/dataTables.bootstrap4.min.css' %}" />
+<link rel="stylesheet"
+    href="{% static 'lib/datatables-1.10.20/plugins/responsive-2.2.3/css/responsive.bootstrap4.min.css' %}" />
+<script src="{% static 'lib/datatables-1.10.20/js/jquery.dataTables.js' %}"></script>
+<script src="{% static 'lib/datatables-1.10.20/js/dataTables.bootstrap4.min.js' %}"></script>
+<script src="{% static 'lib/datatables-1.10.20/plugins/responsive-2.2.3/js/dataTables.responsive.min.js' %}"></script>
+<script src="{% static 'lib/datatables-1.10.20/plugins/responsive-2.2.3/js/responsive.bootstrap4.min.js' %}"></script>
+{% block head_list %} {% endblock %} {% endblock %} {% block h %} {% endblock %} {% block content %}
+<div class="card card-default">
+    <div class="card-header bg-info">
+        <div class="d-flex justify-content-between">
+            <div class="wd-50 d-align">
+                <h3 class="card-title">
+                    {{ title }}
+                </h3>
+            </div>
+            <div>
+                {% block grow1 %}
+                <div class="d-flex justify-content-end">
+                    <div class="d-flex wd-40">
+                        <select id="month" name="month" class="form-select form-control">
+                            <option value="{{ month }}" selected hidden>{{ monthName }}</option>
+                            <option value="1">Enero</option>
+                            <option value="2">Febrero</option>
+                            <option value="3">Marzo</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Mayo</option>
+                            <option value="6">Junio</option>
+                            <option value="7">Julio</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                        <select id="year" name="year" class="form-select form-control">
+                            <option value="{{ year }}" selected hidden>{{ year }}</option>
+                            <option value="2030">2030</option>
+                            <option value="2029">2029</option>
+                            <option value="2028">2028</option>
+                            <option value="2027">2027</option>
+                            <option value="2026">2026</option>
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                        </select>
+                    </div>
+                </div>
+                {% endblock %}
+            </div>
+        </div>
+
+    </div>
+    <div class="card-body" style="background-color: rgb(241, 238, 238);">
+        <div style="overflow-x:auto;">
+            <table class="table" id="data">
+                <thead>
+                    {% block columns %} {% endblock %}
+                </thead>
+                <tbody>
+                    {% block rows %} {% endblock %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer">
+        {% block buttons_list %}
+        <a href="{{ create_url }}" class="btn btn-outline-infobtnTest">
+            <i class="fas fa-plus"></i> Nuevo producto
+        </a>
+        <a href="{{ create_url }}" class="btn btn-outline-infobtnTest">
+            <i class="fas fa-plus"></i> Nueva categoría
+        </a>
+        {% endblock %}
+    </div>
+</div>
+{% endblock %} {% block javaScript %}
+<script class="aplication/javascript">
+    $(function () {
+        $('#data').DataTable({
+            responsive: false,
+            autoWidth: false
+        });
+    });
+</script>
+{% endblock %}

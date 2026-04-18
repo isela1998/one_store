@@ -1,0 +1,78 @@
+{% load static %} {% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>{{ title }}</title>
+    <!-- Tell the browser to be responsive to screen width -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="{% static 'lib/adminlte-3.0.5/plugins/fontawesome-free/css/all.min.css' %}">
+    <!-- Ionicons -->
+    <!-- <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css"> -->
+    <!-- Tempusdominus Bbootstrap 4 -->
+    <link rel="stylesheet"
+        href="{% static 'lib/adminlte-3.0.5/plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css' %}">
+    <!-- Theme style -->
+    <link rel="stylesheet" href="{% static 'lib/adminlte-3.0.5/css/adminlte.min.css' %}">
+    <!-- overlayScrollbars -->
+    <link rel="stylesheet"
+        href="{% static 'lib/adminlte-3.0.5/plugins/overlayScrollbars/css/OverlayScrollbars.min.css' %}">
+    <!-- Google Font: Source Sans Pro -->
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
+    <!-- jQuery -->
+    <script src="{% static 'lib/adminlte-3.0.5/plugins/jquery/jquery.min.js' %}"></script>
+    <!-- Bootstrap 4 -->
+    <script src="{% static 'lib/adminlte-3.0.5/plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    <!-- jQuery UI -->
+    <script src="{% static 'lib/adminlte-3.0.5/plugins/jquery-ui/jquery-ui.min.js' %}"></script>
+    <!-- Moment -->
+    <script src="{% static 'lib/adminlte-3.0.5/plugins/moment/moment.min.js' %}"></script>
+    <!-- AdminLTE App -->
+    <script src="{% static 'lib/adminlte-3.0.5/js/adminlte.min.js' %}"></script>
+    <!-- Jquery Confirm -->
+    <link rel="stylesheet" href="{% static 'lib/jquery-confirm-v3.3.4/jquery-confirm.min.css' %}">
+    <script src="{% static 'lib/jquery-confirm-v3.3.4/jquery-confirm.min.js' %}"></script>
+    <!-- Sweetalert2 -->
+    <script src="{% static 'lib/sweetalert2/sweetalert2@10.js' %}"></script>
+    <!-- Popper -->
+    <script src="{% static 'lib/popper/popper.min.js' %}"></script>
+    <!-- For Tables -->
+    <link href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}" rel="stylesheet" />
+    <link href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}" rel="stylesheet" />
+    <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
+    <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
+
+    <script src="{% static 'lib/moment-2.25.3/moment-with-locales.js' %}"></script>
+    <script src="{% static 'lib/tempusdominus-bootstrap-4/tempusdominus-bootstrap-4.min.js' %}"></script>
+    <link href="{% static 'lib/tempusdominus-bootstrap-4/tempusdominus-bootstrap-4.min.css' %}" rel="stylesheet" />
+
+    <link href="{% static 'lib/bootstrap-touchspin-4.3.0/jquery.bootstrap-touchspin.css' %}" rel="stylesheet" />
+    <script src="{% static 'lib/bootstrap-touchspin-4.3.0/jquery.bootstrap-touchspin.js' %}"></script>
+    <!-- My Styles -->
+    <link rel="stylesheet" href="{% static 'css/stylesheet.css' %}">
+    <link rel="icon" sizes="198x198" href="/media/{{ data.logo }}">
+    <!-- overlayScrollbars -->
+    <script
+        src="{% static 'lib/adminlte-3.0.5/plugins/overlayScrollbars/js/jquery.overlayScrollbars.min.js' %}"></script>
+    <!-- AutoNumeric -->
+    <!-- <script src="{% static 'lib/autonumeric/autoNumeric.js' %}"></script> -->
+    <!-- Functions -->
+    <script src="{% static 'lib/adminlte-3.0.5/dist/js/demo.js' %}"></script>
+    <script src="{% static 'js/functions.js' %}"></script>
+    <!-- Block Head -->
+</head>
+{% block head %} {% endblock %}
+</head>
+
+<div>
+    {{ estado }}
+</div>
+
+<!-- Block Body -->
+{% block body %} {% endblock %}
+
+</html>

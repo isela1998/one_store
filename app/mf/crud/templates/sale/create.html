@@ -1,0 +1,304 @@
+{% extends 'list.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% load humanize %}
+{% block head_list %}
+<link rel="stylesheet" href="{% static 'lib/jquery-ui-1.12.1/jquery-ui.min.css' %}" />
+<script src="{% static 'lib/jquery-ui-1.12.1/jquery-ui.min.js' %}"></script>
+<!-- Auto Numeric -->
+<script src="{% static 'lib/autonumeric/autoNumeric.js' %}"></script>
+<script src="{% static 'sale/js/form.js' %}"></script>
+<!-- <script src="{% static 'sale/js/defaults.js' %}"></script> -->
+{% endblock %}
+
+{% block grow1 %}
+{% endblock %}
+
+{% block content %}
+<form method="POST" id="formSale">
+    <!-- <input name="action" type="hidden" value="add"> -->
+    <input name="id" id="id" type="hidden" value="0">
+    <input name="type_request" type="hidden" value="0">
+    <input name="request" type="hidden" value="0">
+    <div class="card card-primary">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-7">
+                    <div class="card text-dark">
+                        <div class="card-header border-0 text-white">
+                            <h3 class="card-title em-15">
+                                <i class="fas fa-receipt mr-1"></i>
+                                TOTALES DE LA VENTA
+                            </h3>
+                            <div class="card-tools">
+                                <button type="button" class="btn bg-light btn-sm" data-card-widget="collapse">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <h6>TOTALES:</h6>
+                            <div style="display: flex; flex-direction: row; flex-wrap: nowrap;">
+                                <div class="form-group wd-35">
+                                    <input class="form-control text-center height-auto em-25" name="quantity_dolars"
+                                        value="0.0" readonly>
+                                </div>
+                                <div class="form-group wd-50px">
+                                    <input type="text" class="form-control height-auto text-center em-25" value="$."
+                                        disabled>
+                                </div>
+                                <div class="wd-5"></div>
+                                <div class="form-group wd-35">
+                                    {{ form.total }}
+                                </div>
+                                <div class="form-group wd-50px">
+                                    <input type="text" class="form-control height-auto text-center em-25" value="Bs."
+                                        disabled>
+                                </div>
+                            </div>
+                            <h6>RESTA:</h6>
+                            <div style="display: flex; flex-direction: row; flex-wrap: nowrap;">
+                                <div class="form-group wd-35">
+                                    <input class="form-control text-center height-auto em-25" name="totalDlR"
+                                        value="0.0" id="id_totalDlR" readonly>
+                                </div>
+                                <div class="form-group wd-50px">
+                                    <input type="text" class="form-control height-auto text-center em-25" value="$."
+                                        disabled>
+                                </div>
+                                <div class="wd-5"></div>
+                                <div class="form-group wd-35">
+                                    <input type="text" name="totalBsR" value="0.0" readonly
+                                        class="form-control text-center em-25 height-auto" id="id_totalBsR">
+                                </div>
+                                <div class="form-group wd-50px">
+                                    <input type="text" class="form-control height-auto text-center em-25" value="Bs."
+                                        disabled>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header d-flex flex-row flex-nowrap">
+                            <div class="wd-70">
+                                <h3 class="card-title em-15 text-white"><i class="fas fa-boxes"></i> DETALLE DE
+                                    PRODUCTOS</h3>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Buscador de productos</label>
+                                <select name="search" class="form-control select2 em-15" style="width: 100%;">
+                                </select>
+                            </div>
+                            <hr>
+                            <div style="overflow-x:auto;">
+                                <table class="table table-bordered" data-page-length='6' id="tableProducts">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 5%;">...</th>
+                                            <th style="text-align: left!important; width: 35%;">PRODUCTO
+                                            </th>
+                                            <th style="width: 15%;">PRECIO</th>
+                                            <th style="width: 25%;">CANTIDAD</th>
+                                            <th style="text-align: right!important; width: 20%;">TOTAL
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md">
+                    <div class="sticky-top mb-3">
+                        <div class="card text-dark">
+                            <div class="card-header border-0 text-white" style="background-color: #0278ae;">
+                                <h3 class="card-title em-15">
+                                    <i class="fas fa-money-check-alt mr-1"></i>
+                                    DETALLES DEL PAGO
+                                </h3>
+                                <div class="card-tools">
+                                    <button type="button" class="btn bg-light btn-sm" data-card-widget="collapse">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div class="form-group" style="margin-bottom: 0rem!important;">
+                                        <label class="large">Cliente</label>
+                                    </div>
+                                    <div class="text-right" style="margin-bottom: 0rem!important;">
+                                        <button type="button" name="new_client" id="new_client"
+                                            class="btn btn-outline-info btnAddClient"><i class="fas fa-plus"></i><i
+                                                class="fas fa-user"></i> Nuevo
+                                            Cliente</button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <select name="searchClient" id="searchClient" style="width: 100%;"
+                                        class="form-control select2">
+                                        <option value="{{ cli.id }}">{{ cli.names }} {{ cli.ci }}</option>
+                                    </select>
+                                </div>
+                                <div id="cheksPayMethods" class="form-group">
+                                    <hr>
+                                    <label class="large">Método de Pago</label>
+                                    <div class="form-group d-flex justify-content-around">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="inlineRadioOptions"
+                                                id="cash_payment" value="option1" onclick="optionsTypeSale()" checked>
+                                            <label class="form-check-label large" for="cash_payment">Al Contado</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="inlineRadioOptions"
+                                                id="credit_payment" value="option2" onclick="optionsTypeSale()">
+                                            <label class="form-check-label large"
+                                                for="credit_payment">Crédito/Presupuesto</label>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                </div>
+                                <div id="box1">
+                                    <div class="d-flex justify-content-between">
+                                        <div class="form-group" style="margin-bottom: 0rem!important;">
+                                            <label class="large">Seleccione el Método</label>
+                                        </div>
+                                        <div class="form-group" style="margin-bottom: 0rem!important;">
+                                            <label class="large">Cantidad</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="box2">
+                                    <div style="display: flex; flex-direction: row; flex-wrap: nowrap;">
+                                        <div class="form-group" style="width: 60%;">
+                                            <select name="method_pay" class="form-control">
+                                                {% for i in methods %}
+                                                <option value="{{ i.id }}">
+                                                    {{ i.name }} ({{ i.type_symbol }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="width: 40%; text-align: center;">
+                                            {{ form.received }}
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; flex-direction: row; flex-wrap: nowrap;">
+                                        <div class="form-group" style="width: 60%;">
+                                            <select name="method_pay1" class="form-control" value="2">
+                                                {% for i in methods %}
+                                                <option value="{{ i.id }}">{{ i.name }} ({{ i.type_symbol }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="width: 40%; text-align: center;">
+                                            {{ form.received1 }}
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; flex-direction: row; flex-wrap: nowrap;">
+                                        <div class="form-group" style="width: 60%;">
+                                            <select name="method_pay2" class="form-control">
+                                                {% for i in methods %}
+                                                <option value="{{ i.id }}">{{ i.name }} ({{ i.type_symbol }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="width: 40%; text-align: center;">
+                                            {{ form.received2 }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="id_discount">Descuento en dólares ($):</label>
+                                    <input class="form-control text-center inputNumberFormat" name="discount"
+                                        value="0.0" id="id_discount">
+                                </div>
+                                <div class="form-group" id="box4">
+                                    <label class="large">Notas</label>
+                                    <textarea class="form-control large" name="description" id="description" rows="2"
+                                        required>Sin descripción</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <button id="sale" type="submit" class="btn btn-outline-success">
+            <i class="fas fa-check"></i> Registrar venta
+        </button>
+        <button id="budget" type="button" class="btn btn-outline-info">
+            <i class="fas fa-file-invoice"></i> Generar presupuesto
+        </button>
+    </div>
+    </div>
+</form>
+
+<div class="modal fade" id="modalClient" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <form method="post" action="." id="formClient">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <b><i class="fas text-primary fa-plus"></i><span> <i
+                                    class="fas text-primary fa-user-friends"></i> NUEVO CLIENTE</span></b>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <input name="action" type="hidden" value="add">
+                        <input name="id" id="id" type="hidden" value="0">
+                        <input name="sede" type="hidden" value="">
+                        <div class="form-group">
+                            <label class="large" for="id_names">{{ formClient.names.label }}</label>
+                            {{ formClient.names }}
+                        </div>
+                        <label class="large" for="id_ci">{{ formClient.ci.label }}</label>
+                        <div class="d-flex flex-row flex-nowrap">
+                            <div class="form-group wd-30">
+                                {{ formClient.identity }}
+                            </div>
+                            <div class="form-group wd-70">
+                                {{ formClient.ci }}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="large" for="id_contact">{{ formClient.contact.label }}</label>
+                            {{ formClient.contact }}
+                        </div>
+                        <div class="form-group">
+                            <label class="large" for="id_address">{{ formClient.address.label }}</label>
+                            {{ formClient.address }}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-outline-info btn-block"><i class="fas fa-save"></i>
+                        Guardar</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<script>
+    sales.items.dolar1 = {{ dl.dolar1 | safe }};
+    sales.items.products = {{ det | safe }};
+    sales.list();
+
+    $('#form-control-sede').on('change', function () {
+        var select = document.getElementById('form-control-sede');
+        let sede = this.options[select.selectedIndex];
+
+        localStorage.setItem('sede', sede.value);
+        window.location.reload();
+    });
+</script>
+{% endblock %}
