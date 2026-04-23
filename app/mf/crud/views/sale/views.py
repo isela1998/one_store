@@ -115,7 +115,7 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
                 for i in code:
                     exist = 0
                     item = i.toJSON()
-                    item['text'] = '||'+ i.code +'||' + ' - ' + i.brand + ' ' + i.product + ' (' + i.type_product.name + ') - ' + item['price_dl'] + '$'
+                    item['text'] = '||'+ i.code +'||' + ' - ' + i.brand + ' ' + i.product + ' (' + i.type_product.name + ') - ' + '$: ' + item['price_dl'] + ' / Bs: ' + item['price_bs']
                     item['initial'] = i.quantity
                     for d in data:
                         if d['id'] == i.id:
@@ -125,7 +125,7 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
                 for i in brand:
                     exist = 0
                     item = i.toJSON()
-                    item['text'] = '||'+ i.code +'|| ' + ' - ' + i.brand + ' ' + i.product + ' (' + i.type_product.name + ') - ' + item['price_dl'] + '$'
+                    item['text'] = '||'+ i.code +'|| ' + ' - ' + i.brand + ' ' + i.product + ' (' + i.type_product.name + ') - ' + '$: ' + item['price_dl'] + ' / Bs: ' + item['price_bs']
                     item['initial'] = i.quantity
                     for d in data:
                         if d['id'] == i.id:
@@ -135,7 +135,7 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
                 for i in products:
                     exist = 0
                     item = i.toJSON()
-                    item['text'] = '||'+ i.code +'|| ' + ' - ' + i.brand + ' ' + i.product + ' (' + i.type_product.name + ') - ' + item['price_dl'] + '$'
+                    item['text'] = '||'+ i.code +'|| ' + ' - ' + i.brand + ' ' + i.product + ' (' + i.type_product.name + ') - ' + '$: ' + item['price_dl'] + ' / Bs: ' + item['price_bs']
                     item['initial'] = i.quantity
                     for d in data:
                         if d['id'] == i.id:

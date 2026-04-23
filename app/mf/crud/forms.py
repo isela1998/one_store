@@ -359,9 +359,9 @@ class ProductForm(ModelForm):
                     'class': 'form-control text-center',
                     'onclick': 'this.select()',
                     'autocomplete': 'off',
-                    'min': 0,
-                    'step': 1,
-                    'value': 0,
+                    'min': '0.000',
+                    'step': '0.001',  
+                    'value': '0.000',
                 }
             ),
         }
@@ -393,8 +393,9 @@ class ProductUpForm(ModelForm):
                 'class': 'form-control',
                 'autocomplete': 'off',
                 'onclick': 'this.select()',
-                'step': 0.1,
-                'min': '0'
+                'min': '0.000',
+                'step': '0.001',  
+                'value': '0.000',
             }),
         }
         exclude = ['product', 'code', 'category', 'type_product', 'brand', 'description', 'price', 'cost', 'gain', 'price_dl', 'price_bs']

@@ -159,7 +159,7 @@ class Product(models.Model):
     price_dl = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Precio venta")
     price_bs = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Precio bolivares")
     gain = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Ganancia")
-    quantity = models.DecimalField(default=0, max_digits=30, decimal_places=2, verbose_name="Cantidad")
+    quantity = models.DecimalField(default=0, max_digits=30, decimal_places=3, verbose_name="Cantidad")
 
     def __str__(self):
         return '{}.{}.{}'.format(self.brand, self.product, self.type_product.name)
@@ -168,7 +168,8 @@ class Product(models.Model):
         item = model_to_dict(self)
         item['category'] = self.category.toJSON()
         item['type_product'] = self.type_product.toJSON()
-        item['quantity'] = format(self.quantity, '.0f')
+        # item['quantity'] = format(self.quantity, '.3f')
+        item['quantity'] = float(self.quantity) if self.quantity % 1 != 0 else int(self.quantity)
         item['cost'] = format(self.cost, '.2f')
         item['price'] = format(self.price, '.2f')
         item['price_dl'] = format(self.price_dl, '.2f')

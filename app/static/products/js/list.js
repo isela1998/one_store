@@ -60,7 +60,7 @@ function getData() {
         class: 'text-center',
         orderable: false,
         render: function (data, type, row) {
-          let quantity = `<span class="${row.css}" style="width: 30px;">${parseInt(data)}</span`;
+          let quantity = `<span class="${row.css}" style="width: 30px;">${data}</span`;
           return quantity;
         },
       },

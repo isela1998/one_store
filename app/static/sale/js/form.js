@@ -18,18 +18,20 @@ var sales = {
     let subtotal = 0.0;
     let subtotalBs = 0.0;
     $.each(this.items.products, function (pos, dict) {
-      dict.subtotal = dict.quantity * parseFloat(dict.price_dl);
+      dict.subtotal = dict.quantity * parseFloat(dict.price_bs);
       subtotal += dict.subtotal;
     });
 
-    this.items.total = subtotal;
+    this.items.total = subtotal / this.items.dolar1;
     subtotalBs = this.items.total * this.items.dolar1;
 
-    $('input[name="quantity_dolars"]').val(this.items.total.toFixed(2));
-    $('input[name="total"]').val(subtotalBs.toFixed(2));
+    // Para los inputs de dólares
+    $('input[name="quantity_dolars"]').val((Number(this.items.total) || 0).toFixed(2));
+    $('input[name="totalDlR"]').val((Number(this.items.total) || 0).toFixed(2));
 
-    $('input[name="totalDlR"]').val(this.items.total.toFixed(2));
-    $('input[name="totalBsR"]').val(subtotalBs.toFixed(2));
+    // Para los inputs de bolívares
+    $('input[name="total"]').val((Number(subtotalBs) || 0).toFixed(2));
+    $('input[name="totalBsR"]').val((Number(subtotalBs) || 0).toFixed(2));
   },
   add: function (item) {
     this.items.products.push(item);
@@ -90,14 +92,25 @@ var sales = {
         },
       ],
       rowCallback(row, data, displayNum, displayIndex, dataIndex) {
-        $(row).find('input[name="quantity"]').TouchSpin({
-          min: 1,
-          max: data.qinitial,
-          step: 1,
-          decimals: 0,
-          boostat: 5,
-          maxboostedstep: 10,
+        const $input = $(row).find('input[name="quantity"]');
+
+        $input.TouchSpin({
+            min: 0.001,
+            max: data.qinitial,
+            step: 0.001, // Cambiado a 0.001 para que el + y - funcionen con precisión
+            forcestepdivisibility: 'none',
+            decimals: 3,
+            boostat: 5,
+            maxboostedstep: 10,
+        }).on('change touchspin.on.stopspin', function () {
+            // Obtenemos el valor actual como número para eliminar ceros a la derecha
+            const val = parseFloat($(this).val());
+            // Lo volvemos a asignar al input
+            $(this).val(val);
         });
+
+        // Disparar el cambio manualmente al inicio para limpiar el valor que viene del servidor
+        $input.trigger('change');
       },
       initComplete: function (settings, json) {},
     });
@@ -123,8 +136,8 @@ $(function () {
         sales.items.products[tr.row].quantity = quantity;
         sales.calculate_invoice();
         $('td:eq(4)', tableProducts.row(tr.row).node()).html(
-          sales.items.products[tr.row].subtotal
-            .toFixed(2)
+          (Number(sales.items.products[tr.row].subtotal) || 0)
+            .toFixed(3)
             .replace(/\d(?=(\d{3})+\.)/g, '$&,')
         )
 
@@ -390,8 +403,8 @@ $(function () {
     differenceDl = totalInvoice - totalRWDiscount;
     differenceBs = differenceDl * sales.items.dolar1;
 
-    $('input[name="totalDlR"]').val(differenceDl.toFixed(2));
-    $('input[name="totalBsR"]').val(differenceBs.toFixed(2));
+    $('input[name="totalDlR"]').val((Number(differenceDl) || 0).toFixed(2));
+    $('input[name="totalBsR"]').val((Number(differenceBs) || 0).toFixed(2));
 
     if (differenceDl.toFixed(2) == 0 || differenceDl < 0) return true;
     else return false;
