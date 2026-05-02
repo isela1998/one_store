@@ -30,8 +30,8 @@ function getData() {
             { "data": "brand" },
             { "data": "product" },
             { "data": "cost" },
-            { "data": "price_dl" },
             { "data": "quantity" },
+            { "data": "price_dl" },
             { "data": "gain" },
         ],
         dom: '<"myCustomClass"f>rt<"bottom"lp><"clear">',
@@ -44,22 +44,23 @@ function getData() {
 
             // Calculo de ganancias totales
             var api = this.api();
-            var totalInversion = api.column(4, { search: 'applied' }).data().reduce(function (a, b) {
+
+            var totalInversion = api.rows({ search: 'applied' }).data().toArray().reduce(function (total, row) {
+                let qty = parseFloat(row.quantity) || 0;
+                let cost = parseFloat(row.cost) || 0;
+                return total + (qty * cost);
+            }, 0);
+
+            var totalGain = api.column(7, { search: 'applied' }).data().reduce(function (a, b) {
                 var x = parseFloat(a) || 0;
                 var y = parseFloat(b) || 0;
                 return x + y;
             }, 0);
 
-            var totalGain = api.column(6, { search: 'applied' }).data().reduce(function (a, b) {
-                var x = parseFloat(a) || 0;
-                var y = parseFloat(b) || 0;
-                return x + y;
-            }, 0);
-
-            var totalVenta = api.column(5, { search: 'applied' }).data().reduce(function (a, b) {
-                var x = parseFloat(a) || 0;
-                var y = parseFloat(b) || 0;
-                return x + y;
+            var totalVenta = api.rows({ search: 'applied' }).data().toArray().reduce(function (total, row) {
+                let qty = parseFloat(row.quantity) || 0;
+                let price_dl = parseFloat(row.price_dl) || 0;
+                return total + (qty * price_dl);
             }, 0);
 
             $('#total-inversion').val(totalInversion.toLocaleString('de-DE', { 
@@ -95,7 +96,7 @@ function getData() {
                 }
             },
             {
-                targets: [-2],
+                targets: [-3],
                 class: 'text-center',
                 orderable: false,
                 render: function (data, type, row) {
@@ -104,7 +105,7 @@ function getData() {
                 },
             },
             {
-                targets: [-1,-3,-4],
+                targets: [-1,-2,-4],
                 class: 'text-center',
                 render: $.fn.dataTable.render.number('.', ',', 2)
             },
