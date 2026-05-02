@@ -30,8 +30,9 @@ function getData() {
             { "data": "brand" },
             { "data": "product" },
             { "data": "cost" },
-            { "data": "quantity" },
             { "data": "price_dl" },
+            { "data": "gainU" },
+            { "data": "quantity" },
             { "data": "gain" },
         ],
         dom: '<"myCustomClass"f>rt<"bottom"lp><"clear">',
@@ -51,7 +52,7 @@ function getData() {
                 return total + (qty * cost);
             }, 0);
 
-            var totalGain = api.column(7, { search: 'applied' }).data().reduce(function (a, b) {
+            var totalGain = api.column(8, { search: 'applied' }).data().reduce(function (a, b) {
                 var x = parseFloat(a) || 0;
                 var y = parseFloat(b) || 0;
                 return x + y;
@@ -80,7 +81,7 @@ function getData() {
         },
         columnDefs: [
             {
-                targets: [-8],
+                targets: [-9],
                 class: 'text-center',
                 render: function (data, type, row) {
                     let code = '<span class="badge text-dark fill-available badge-info"><b>' + data + '</b></span>';
@@ -88,7 +89,7 @@ function getData() {
                 }
             },
             {
-                targets: [-5],
+                targets: [-6],
                 class: 'text-left',
                 render: function(data, type, row){
                     let product = data + ' (' + row.type_product.name + ') ' + row.description;
@@ -96,16 +97,16 @@ function getData() {
                 }
             },
             {
-                targets: [-3],
+                targets: [-2],
                 class: 'text-center',
-                orderable: false,
+                orderable: true,
                 render: function (data, type, row) {
                     let quantity = `<span class="${row.css}" style="width: 30px;">${data}</span`;
                     return quantity;
                 },
             },
             {
-                targets: [-1,-2,-4],
+                targets: [-1,-3,-4,-5],
                 class: 'text-center',
                 render: $.fn.dataTable.render.number('.', ',', 2)
             },

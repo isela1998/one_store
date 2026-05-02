@@ -37,6 +37,7 @@ class GainMaginListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateVie
                 data = []
                 for i in Product.objects.all():
                     item = i.toJSON()
+                    item['gainU'] = float(item['price_dl']) - float(item['cost'])
                     item['gain'] = (float(item['price_dl']) - float(item['cost'])) * float(item['quantity'])
                     if(i.quantity < 5):
                         css = 'badge badge-danger fill-available pointer-1'
