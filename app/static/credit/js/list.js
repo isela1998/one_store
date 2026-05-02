@@ -89,7 +89,7 @@ function getData(start, end, all) {
 function getData2(id) {
   tbCredit = $('#data2').DataTable({
     ordering: true,
-    order: [[6, 'desc']],
+    order: [[0, 'desc']],
     searching: false,
     paging: true,
     info: false,
@@ -110,6 +110,7 @@ function getData2(id) {
     },
     dom: '<"myCustomClass"f>rt<"bottom"lp><"clear">',
     columns: [
+      { data: 'id' },
       { data: 'operation' },
       { data: 'datehour' },
       { data: 'quantity' },
@@ -122,7 +123,7 @@ function getData2(id) {
       {
         targets: [-7],
         class: 'text-center',
-        orderable: true,
+        orderable: false,
         render: function (data, type, row) {
           let operation = 'nothing';
           if (data == '+')
@@ -134,7 +135,7 @@ function getData2(id) {
       {
         targets: [-5],
         class: 'text-center',
-        orderable: true,
+        orderable: false,
         render: function (data, type, row) {
           return data + ' $';
         },
@@ -142,7 +143,7 @@ function getData2(id) {
             {
         targets: [-4],
         class: 'text-center',
-        orderable: true,
+        orderable: false,
         render: function (data, type, row) {
           return data + ' Bs';
         },
@@ -150,7 +151,7 @@ function getData2(id) {
       {
         targets: [-2],
         class: 'text-center',
-        orderable: true,
+        orderable: false,
         render: function (data, type, row) {
           if (data == undefined)
             return `<span class="badge badge-info text-white pointer-1">NA</span>`;
@@ -161,7 +162,7 @@ function getData2(id) {
       {
         targets: [-1],
         class: 'text-center',
-        orderable: true,
+        orderable: false,
         render: function (data, type, row) {
           let buttons = ''
           if(row.sale == undefined){
