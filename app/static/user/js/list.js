@@ -102,6 +102,7 @@ $(function () {
       let data = tbUser.row(tr.row).data();
       $('input[name="action"]').val('edit');
       $('input[name="id"]').val(data.id);
+      $('select[name="group"]').val(data.groups[0].id);
       $('input[name="first_name"]').val(data.first_name);
       $('input[name="last_name"]').val(data.last_name);
       $('input[name="username"]').val(data.username);

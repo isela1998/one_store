@@ -55,18 +55,19 @@ class UserListView(LoginRequiredMixin, TemplateView):
                     u.save() 
                     u.groups.add(request.POST['group'])
             elif action == 'edit':
-                print(request.POST)
                 u = User.objects.get(pk=request.POST['id'])
                 u.first_name = request.POST['first_name']
                 u.last_name = request.POST['last_name']
                 u.username = request.POST['username']
                 u.set_password(request.POST['password'])
+                
                 if request.POST['group'] == '1':
                     u.is_superuser = True
                 else:
                     u.is_superuser = False
-                u.group = request.POST['group']
                 u.save() 
+                
+                u.groups.clear()
                 u.groups.add(request.POST['group'])
             elif action == 'delete':
                 User.objects.get(pk=request.POST['id']).delete()
