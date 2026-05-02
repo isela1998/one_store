@@ -436,6 +436,7 @@ $(function () {
   //Send data
   $('#formSale').on('submit', function (e) {
     e.preventDefault();
+    let btnSubmit = $(this).find('button[type="submit"]');
     convertToUpperCase();
     // Validations in the form
     let difference = $('input[name="totalDlR"]').val();
@@ -474,10 +475,9 @@ $(function () {
     } else if (check1 != true && check2 != true) {
       alertSweetErrorProducts('Seleccione el Método de Pago');
       return false;
-    } else if ($('input[name="request"]').val() == 1) {
-      alertSweetErrorProducts('Ya se recibió su petición, porfavor espere...');
-      return false;
     } else {
+      // Control de botón de envío
+      btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
       // Send Data
       $('input[name="request"]').val(1);
       document.getElementById('id_received').disabled = false;
@@ -495,6 +495,10 @@ $(function () {
           alertSweetSuccess('Venta registrada con Éxito');
           window.location.reload();
           location.href = '#top';
+        },
+        function (error) {
+          btnSubmit.prop('disabled', false).text('Registrar Venta');
+          alertSweetErrorProducts('Ocurrió un error en el servidor, intente nuevamente');
         }
       );
     }
