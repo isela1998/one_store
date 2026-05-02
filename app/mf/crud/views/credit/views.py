@@ -45,7 +45,7 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
 
                 for i in Credit.objects.using(db).filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']):
                     item = i.toJSON()
-                    item['totalDebtBs'] = float(item['totalDebt']) * float(dl_value)
+                    item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
                     data.append(item)
             elif action == 'searchdata2':
                 data = []
