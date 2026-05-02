@@ -319,8 +319,11 @@ class DetCredit(models.Model):
     last_credit_date = models.DateField(max_length=10, default=date.today().strftime('%Y-%m-%d'), verbose_name="Fecha")
     datehour = models.CharField(default=date.today().strftime('%Y-%m-%d'), max_length=30, verbose_name="Fecha y Hora")
     operation = models.CharField(max_length=2, default="+", verbose_name='Operación')
+    method_pay = models.ForeignKey(Method_pay, on_delete=models.PROTECT, verbose_name="Método de pago")
     quantity = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name='Cantidad')
+    quantitybs = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name='CantidadBs')
     description = models.CharField(max_length=255, verbose_name='Descripción')
+    status = models.IntegerField(default=1)
 
     def __str__(self):
         return self.credit.id
@@ -329,6 +332,8 @@ class DetCredit(models.Model):
         item = model_to_dict(self, exclude=['credit'])
         if self.sale:
             item['sale'] = self.sale.toJSON()
+        if self.method_pay:
+            item['method_pay'] = self.method_pay.toJSON()
         item['quantity'] = format(self.quantity, '.2f')
         return item
 

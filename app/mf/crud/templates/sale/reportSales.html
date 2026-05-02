@@ -84,19 +84,24 @@
             <tr>
                 <th style="font-size: 10px;">Tipo</th>
                 <th style="font-size: 10px; width: 10%; text-align: center;">Cantidad</th>
-                <th style="font-size: 10px; width: 20%; text-align: center;">Totales</th>
+                <th style="font-size: 10px; width: 20%; text-align: center;">Totales $.</th>
             </tr>
         </thead>
         <tbody>
             <tr style="padding-top: 4px;">
                 <td style="font-size: 10px; padding-top: 3px;">Al contado</td>
-                <td style="font-size: 10px; text-align: center;">{{ detTypeSales.cash|floatformat:2 }}</td>
+                <td style="font-size: 10px; text-align: center;">{{ detTypeSales.cash }}</td>
                 <td style="font-size: 10px; text-align: center;">{{ detTypeSales.totalCash|floatformat:2 }}</td>
             </tr>
             <tr style="padding-top: 4px;">
                 <td style="font-size: 10px;">A crédito</td>
-                <td style="font-size: 10px; text-align: center;">{{ detTypeSales.credit|floatformat:2 }}</td>
+                <td style="font-size: 10px; text-align: center;">{{ detTypeSales.credit }}</td>
                 <td style="font-size: 10px; text-align: center;">{{ detTypeSales.totalCredit|floatformat:2 }}</td>
+            </tr>
+            <tr style="padding-top: 4px;">
+                <td style="font-size: 10px;">Abonos de créditos</td>
+                <td style="font-size: 10px; text-align: center;">{{ detTypeSales.payments }}</td>
+                <td style="font-size: 10px; text-align: center;">{{ detTypeSales.totalPayments|floatformat:2 }}</td>
             </tr>
             <tr style="border-top: 1px solid black; padding-top: 4px;">
                 <td style="font-size: 10px;"></td>
@@ -119,7 +124,7 @@
             {% for d in payMethod %}
             <tr style="padding-top: 3px;">
                 <td style="font-size: 10px;">{{ d.method }}</td>
-                <td style="font-size: 10px; text-align: center;">{{ d.quantity|floatformat:2 }} </td>
+                <td style="font-size: 10px; text-align: center;">{{ d.quantity }} </td>
                 <td style="font-size: 10px; text-align: center;">{{ d.total_bs|floatformat:2 }}</td>
                 <td style="font-size: 10px; text-align: center;">{{ d.total|floatformat:2 }}</td>
             </tr>
@@ -132,7 +137,37 @@
             </tr>
         </tbody>
     </table><br><br>
-     <span style="font-size: 10px; font-weight: 600; text-align: left;">3. VENTAS CON DESCUENTOS</span><br>
+    <span style="font-size: 10px; font-weight: 600; text-align: left;">3. DETALLE DE ABONOS DE VENTAS A CRÉDITO</span><br>
+    <table id="invoice">
+        <thead>
+            <tr>
+                <th style="font-size: 10px; width: 20%;">Fecha</th>
+                <th style="font-size: 10px; width: 60%; text-align: left;">Cliente</th>
+                <th style="font-size: 10px; width: 60%; text-align: left;">Método</th>
+                <th style="font-size: 10px; width: 20%; text-align: center;">Total Bs.</th>
+                <th style="font-size: 10px; width: 20%; text-align: center;">Total $.</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in payments %}
+            <tr style="border-bottom: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px; padding-top: 3px;">{{ d.date }}</td>
+                <td style="font-size: 10px; text-align: left;">{{ d.client }}</td>
+                <td style="font-size: 10px; text-align: left;">{{ d.method }}</td>
+                <td style="font-size: 10px; text-align: center; padding-top: 3px;">{{ d.quantityBs|floatformat:2 }}</td>
+                <td style="font-size: 10px; text-align: center; padding-top: 3px;">{{ d.quantity|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px; text-align: right;">TOTALES</td>
+                <td style="font-size: 10px; text-align: center;">{{ totalPaymentsBs|floatformat:2 }} Bs</td>
+                <td style="font-size: 10px; text-align: center;">{{ totalPayments|floatformat:2 }} $</td>
+            </tr>
+        </tbody>
+    </table><br><br>
+         <span style="font-size: 10px; font-weight: 600; text-align: left;">4. VENTAS CON DESCUENTOS</span><br>
     <table id="invoice">
         <thead>
             <tr>
@@ -156,30 +191,6 @@
                 <td style="font-size: 10px;"></td>
                 <td style="font-size: 10px; text-align: right;">TOTAL</td>
                 <td style="font-size: 10px; text-align: center;">{{ totalDiscounts|floatformat:2 }} $</td>
-            </tr>
-        </tbody>
-    </table><br><br>
-    <span style="font-size: 10px; font-weight: 600; text-align: left;">4. ABONOS DE VENTAS A CRÉDITO</span><br>
-    <table id="invoice">
-        <thead>
-            <tr>
-                <th style="font-size: 10px; width: 20%;">Fecha</th>
-                <th style="font-size: 10px; width: 60%; text-align: left;">Cliente</th>
-                <th style="font-size: 10px; width: 20%; text-align: center;">Cantidad ($)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for d in payments %}
-            <tr style="border-bottom: 1px solid black; padding-top: 4px;">
-                <td style="font-size: 10px; padding-top: 3px;">{{ d.date }}</td>
-                <td style="font-size: 10px; text-align: left;">{{ d.client }}</td>
-                <td style="font-size: 10px; text-align: center; padding-top: 3px;">{{ d.quantity }} $</td>
-            </tr>
-            {% endfor %}
-            <tr style="border-top: 1px solid black; padding-top: 4px;">
-                <td style="font-size: 10px;"></td>
-                <td style="font-size: 10px; text-align: right;">TOTAL</td>
-                <td style="font-size: 10px; text-align: center;">{{ totalPayments|floatformat:2 }} $</td>
             </tr>
         </tbody>
     </table><br><br>

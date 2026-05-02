@@ -102,14 +102,15 @@ class DashboardView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
         year = datetime.now().year
         month = datetime.now().month
         try:
-            for p in Product.objects.using(db).all():
-                total = DetSale.objects.using(db).filter(sale__datejoined__year=year, sale__datejoined__month=month, prod__id=p.id).aggregate(
-                    r=Coalesce(Sum('total'), 0)).get('r')
-                if total > 0:
-                    data.append({
-                        'name': p.brand + ' ' + p.product,
-                        'y': float(total)
-                    })
+            sales_data = DetSale.objects.using(db).filter(sale__datejoined__year=year,
+                sale__datejoined__month=month).values('prod__brand', 'prod__product'
+            ).annotate(total_sold=Sum('total')).order_by('-total_sold')[:15]
+            
+            for item in sales_data:
+                data.append({
+                    'name': f"{item['prod__brand']} {item['prod__product']}",
+                    'y': float(item['total_sold'])
+                })
         except:
             pass
         return data

@@ -3,7 +3,7 @@ var tbCredit;
 var sede = localStorage.getItem('sede');
 var sede_id = 0;
 
-function getData(start, end) {
+function getData(start, end, all) {
   tableSale = $('#data').DataTable({
     ordering: true,
     order: [[1, 'desc']],
@@ -23,6 +23,7 @@ function getData(start, end) {
         action: 'searchdata',
         start: start,
         end: end,
+        all: all,
       },
       dataSrc: '',
     },
@@ -77,8 +78,6 @@ function getData(start, end) {
           let buttons =
             '<a href="#" rel="payment" data-title="Abonar" type="button" class="btn btn-info btn-smp btn-flat"><i class="fas text-dark fa-arrow-down"></i></a> ';
           buttons += `<a href="#" onclick="getData2(${data})" data-title="Historial" type="button" class="btn btn-warning btn-smp btn-flat"><i class="fas text-dark fa-history"></i></a> `;
-          buttons +=
-            '<a href="#" rel="delete" data-title="Eliminar" type="button" class="btn btn-danger btn-smp btn-flat"><i class="fas text-dark fa-trash-alt"></i></a> ';
           return buttons;
         },
       },
@@ -116,10 +115,11 @@ function getData2(id) {
       { data: 'quantity' },
       { data: 'description' },
       { data: 'sale.id' },
+      { data: 'id' },
     ],
     columnDefs: [
       {
-        targets: [-5],
+        targets: [-6],
         class: 'text-center',
         orderable: true,
         render: function (data, type, row) {
@@ -131,7 +131,7 @@ function getData2(id) {
         },
       },
       {
-        targets: [-3],
+        targets: [-4],
         class: 'text-center',
         orderable: true,
         render: function (data, type, row) {
@@ -139,7 +139,7 @@ function getData2(id) {
         },
       },
       {
-        targets: [-1],
+        targets: [-2],
         class: 'text-center',
         orderable: true,
         render: function (data, type, row) {
@@ -147,6 +147,18 @@ function getData2(id) {
             return `<span class="badge badge-info text-white pointer-1">NA</span>`;
           else
             return `<span class="badge badge-info text-white pointer-2" onclick="viewInvoice(${data})">${data}</span>`;
+        },
+      },
+      {
+        targets: [-1],
+        class: 'text-center',
+        orderable: true,
+        render: function (data, type, row) {
+          let buttons = ''
+          if(row.sale == undefined){
+            buttons += '<a data-title="Eliminar" href="#" rel="delete" type="button" class="btn btn-secondary btn-smp"><i class="fas text-white fa-trash"></i></a> ';  
+          }
+          return buttons
         },
       },
     ],
@@ -189,13 +201,17 @@ $(function () {
   $('#input-date, #input-date-2').on('change', function () {
     let start = $('input[name="input-date"]').val();
     let end = $('input[name="input-date-2"]').val();
-    getData(start, end);
+    getData(start, end, gettAll());
+  });
+
+  $('#id_method_pay, #totalPayment').on('change keyup', function () {
+    getDifference();
   });
 
   let start = $('input[name="input-date"]').val();
   let end = $('input[name="input-date-2"]').val();
 
-  getData(start, end);
+  getData(start, end, gettAll());
 });
 
 $(function () {
@@ -207,6 +223,26 @@ $(function () {
 });
 
 $(function () {
+   $('#data2 tbody')
+    .on('click', 'a[rel="delete"]', function () {
+      let tr = tbCredit.cell($(this).closest('td, li')).index();
+      let data = tbCredit.row(tr.row).data();
+      let parameters = new FormData();
+      parameters.append('action', 'deleteItem');
+      parameters.append('id', data.id);
+      submit_with_ajax_msj(
+        window.location.pathname,
+        'Notificación',
+        '¿Estas seguro de realizar eliminar el siguiente registro?',
+        parameters,
+        function () {
+          alertSweetSuccess('Listado de abonos actualizado');
+          setTimeout(tableSale.ajax.reload(), 5000);
+          setTimeout(tbCredit.ajax.reload(), 5000);
+        }
+      );
+  });
+
   $('#data tbody')
     .on('click', 'a[rel="details"]', function () {
       let tr = tableSale.cell($(this).closest('td, li')).index();
@@ -219,9 +255,13 @@ $(function () {
       let tr = tableSale.cell($(this).closest('td, li')).index();
       let data = tableSale.row(tr.row).data();
       $('input[name="action"]').val('payment');
+      $('input[name="dl"]').val(data.dl);
       $('input[name="idCredit"]').val(data.id);
-      $('input[name="client"]').val(data.client.names);
+      $('input[name="client"]').val(data.client.names + ' ' +  data.client.identity + '-' + data.client.ci);
       $('input[name="pending"]').val(data.totalDebt);
+      $('input[name="pending2"]').val(data.totalDebt);
+      $('input[name="pendingBs"]').val(data.totalDebtBs);
+      $('input[name="pending2Bs"]').val(data.totalDebtBs);
       $('#modalPayment').modal('show');
     })
     .on('click', 'a[rel="delete"]', function () {
@@ -243,15 +283,74 @@ $(function () {
     });
 });
 
+function searchAll(){
+  let start = $('input[name="input-date"]').val();
+  let end = $('input[name="input-date-2"]').val();
+  getData(start, end, gettAll());
+}
+
+function gettAll() {
+  let result = 0;
+  const checkbox = document.getElementById('getAll');
+
+  if (checkbox && checkbox.checked) { 
+    result = 1;
+  }
+  
+  return result;
+}
+
+function getDifference(){
+  let option = $('select[name="method_pay"] option:selected').text();
+  let amountDl = parseFloat($('input[name="pending"]').val());
+  let amountBs = parseFloat($('input[name="pendingBs"]').val());
+  let pay = parseFloat($('input[name="totalPayment"]').val()) || 0;
+  let dl = parseFloat($('input[name="dl"]').val());
+
+  console.log('dolar', dl)
+  
+  if (option.includes('$')) {
+      let pendingDl = parseFloat(amountDl) - parseFloat(pay);
+      let pendingBs = parseFloat(pendingDl) * parseFloat(dl);
+
+      $('input[name="pending2"]').val(pendingDl.toFixed(2));
+      $('input[name="pending2Bs"]').val(pendingBs.toFixed(2));
+
+  } else if (option.includes('Bs')) {
+      let pendingBs = parseFloat(amountBs) - parseFloat(pay);
+      let pendingDl = parseFloat(pendingBs) / parseFloat(dl);
+
+      $('input[name="pending2"]').val(pendingDl.toFixed(2));
+      $('input[name="pending2Bs"]').val(pendingBs.toFixed(2));
+  }
+}
+
 $(function () {
   $('#formPayment').on('submit', function (e) {
     e.preventDefault();
-    let parameters = new FormData(this);
-    parameters.append('sede', '');
-    submit_with_ajax(window.location.pathname, parameters, function () {
-      $('#modalPayment').modal('hide');
-      alertSweetSuccess('Abono registrado');
-      setTimeout(tableSale.ajax.reload(), 5000);
-    });
+    let btnSubmit = $(this).find('button[type="submit"]');
+    let option = $('select[name="method_pay"]').val();
+    let pay = parseFloat($('input[name="totalPayment"]').val()) || 0;
+
+    if (option == '' || option == 0){
+      alertSweetErrorProducts('Debe seleccionar el método de pago');
+      return false;
+    } else if (pay <= 0){
+      alertSweetErrorProducts('El monto a abonar debe ser mayor a 0');
+      return false;
+    } else {
+      // Control de botón de envío
+      btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
+      // Send Data
+      let parameters = new FormData(this);
+      submit_with_ajax_with_error(window.location.pathname, parameters, function () {
+        $('#modalPayment').modal('hide');
+        alertSweetSuccess('Abono registrado');
+        setTimeout(tableSale.ajax.reload(), 5000);
+      },
+      function (error) {
+        btnSubmit.prop('disabled', false).text('Registrar Venta');
+      });
+    }
   });
 });
