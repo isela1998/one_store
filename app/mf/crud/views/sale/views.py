@@ -13,7 +13,7 @@ from mf.crud.mixins import IsSuperuserMixin, ValidatePermissionMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from mf.crud.models import Product, Sale, Credit, DetCredit, Budget, DetSale, DetBudget, Client, Method_pay, Dolar
-from mf.crud.forms import SaleForm, ClientForm, MethodPayForm
+from mf.crud.forms import SaleForm, ClientForm, MethodPayForm, ProductForm
 from mf.crud.functions import *
 from django.db.models import Q
 
@@ -211,6 +211,40 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
                     'names': cli.names,
                     'ci': cli.identity + '-' + cli.ci
                 }
+            elif action == 'addProduct':
+                perms = ['add_product']
+                group = request.user.groups.first()
+                authorized = ValidatePermissions(perms, group)
+                if(authorized == False):
+                    data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
+                elif(authorized == True):
+                    dolar = Dolar.objects.using(db).get(pk=1)
+                    iva = float(1.16)
+
+                    # cost = float(request.POST['cost'])
+                    # gain_margin = price_dl - cost
+
+                    price_dl = float(request.POST['price_dl'])
+                    price_bs = price_dl * float(dolar.dolar)
+                    cost = float(request.POST['cost'])
+                    price = price_bs / iva
+                    
+                    quantity = float(request.POST['quantity'])
+                    
+                    with transaction.atomic():
+                        p = Product()
+                        p.category_id = request.POST['category']
+                        p.type_product_id = request.POST['type_product']
+                        p.product = request.POST['product']
+                        p.code = request.POST['code']
+                        p.brand = request.POST['brand']
+                        p.description = request.POST['description']
+                        p.quantity = quantity
+                        p.cost = cost
+                        p.price_dl = price_dl
+                        p.price = price
+                        p.price_bs = price_bs
+                        p.save()     
             else:
                 data['error'] = 'No ha ingresado a ninguna opción'
         except Exception as e:
@@ -364,6 +398,7 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
         context['title'] = 'MÓDULO DE FACTURACIÓN - NUEVA VENTA'
         context['formClient'] = ClientForm()
         context['formMethod'] = MethodPayForm()
+        context['formProduct'] = ProductForm()
         context['methods'] = self.get_methods_pay()
         context['invoice_number'] = self.get_lastet_invoice_number()
         context['action'] = 'add'
@@ -425,7 +460,7 @@ class SaleInvoicePdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 'sale': sale,
                 'comp': dataCompany,
                 'url': getStaticUrl(),
-                'icon': 'https://jeantren-86cc3b8c232c.herokuapp.com/media/img/logo/logo.png',
+                'icon': 'http://127.0.0.1:8000/media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')
@@ -698,7 +733,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 'totalProducts': totalProducts,
                 'comp': dataCompany,
                 'url': getStaticUrl(),
-                'icon': 'https://jeantren-86cc3b8c232c.herokuapp.com/media/img/logo/logo.png',
+                'icon': 'http://127.0.0.1:8000/media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')

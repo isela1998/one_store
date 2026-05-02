@@ -40,8 +40,12 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             action = request.POST['action']
             if action == 'searchdata':
                 data = []
+                dl = get_dollar()
+                dl_value = dl.get('dolar1')
+
                 for i in Credit.objects.using(db).filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']):
                     item = i.toJSON()
+                    item['totalDebtBs'] = float(item['totalDebt']) * float(dl_value)
                     data.append(item)
             elif action == 'searchdata2':
                 data = []
@@ -166,7 +170,7 @@ class CreditReportPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView)
                 'total': total,
                 'comp': dataCompany,
                 'url': getStaticUrl(),
-                'icon': server_url + '/media/img/logo/logo_.png',
+                'icon': 'http://127.0.0.1:8000/media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')

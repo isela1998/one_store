@@ -163,6 +163,29 @@ $(function () {
       $('#modalClient').modal('show');
     });
 
+    $('.btnAdd').on('click', function () {
+      $('form')[2].reset();
+      // modal_title.find('#span_modal_title').html('Agregar Producto');
+      // modal_title
+      //   .find('#i_modal_title')
+      //   .removeClass()
+      //   .addClass('fas text-primary fa-plus');
+      document.getElementById('btn_submit').innerHTML =
+        '<i class="fas fa-save"></i> Guardar';
+      $('input[name="actionProducto"]').val('add');
+      $('#modalProduct').modal('show');
+    });
+
+    $('.formProduct').on('submit', function (e) {
+      e.preventDefault();
+      convertToUpperCase();
+      let parameters = new FormData(this);
+      submit_with_ajax(window.location.pathname, parameters, function () {
+        $('#modalProduct').modal('hide');
+        alertSweetSuccess('Producto registrado con éxito');
+      });
+    });
+
     $('select[name="method_pay"]').on('change', function () {
       let methodName = $('select[name="method_pay"] option:selected').text();
       if (this.value == 1) {

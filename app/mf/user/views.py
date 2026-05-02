@@ -55,7 +55,8 @@ class UserListView(LoginRequiredMixin, TemplateView):
                     u.save() 
                     u.groups.add(request.POST['group'])
             elif action == 'edit':
-                u = User.objects.get(pk=1)
+                print(request.POST)
+                u = User.objects.get(pk=request.POST['id'])
                 u.first_name = request.POST['first_name']
                 u.last_name = request.POST['last_name']
                 u.username = request.POST['username']

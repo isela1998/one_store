@@ -30,6 +30,7 @@ function getData(start, end) {
       { data: 'datehour' },
       { data: 'client' },
       { data: 'totalDebt' },
+      { data: 'totalDebtBs' },
       { data: 'id' },
     ],
     dom: '<"myCustomClass"f>rt<"bottom"lp><"clear">',
@@ -42,14 +43,22 @@ function getData(start, end) {
     },
     columnDefs: [
       {
-        targets: [-4],
+        targets: [-5],
         orderable: true,
       },
       {
-        targets: [-3],
+        targets: [-4],
         render: function (data, type, row) {
           let client = `<i>${data.names} (${data.ci}) ${data.contact}</i>`;
           return client;
+        },
+      },
+      {
+        targets: [-3],
+        orderable: true,
+        class: 'text-center',
+        render: function (data, type, row) {
+          return `<span class="badge color2 text-white pointer-1" style="width: 80px;">${data}</span>`;
         },
       },
       {
@@ -57,7 +66,7 @@ function getData(start, end) {
         orderable: true,
         class: 'text-center',
         render: function (data, type, row) {
-          return `<span class="badge color2 text-white pointer-1" style="width: 80px;">${data}</span>`;
+          return `<span class="badge bg-secondary text-white pointer-1" style="width: 80px;">${data}</span>`;
         },
       },
       {

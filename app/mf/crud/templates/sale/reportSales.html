@@ -105,34 +105,7 @@
             </tr>
         </tbody>
     </table><br>
-    <span style="font-size: 10px; font-weight: 600; text-align: left;">2. VENTAS CON DESCUENTOS</span><br>
-    <table id="invoice">
-        <thead>
-            <tr>
-                <th style="font-size: 10px; width: 15%;">Fecha</th>
-                <th style="font-size: 10px; width: 15%; text-align: center;">Factura</th>
-                <th style="font-size: 10px; width: 50%; text-align: left;">Cliente</th>
-                <th style="font-size: 10px; width: 20%; text-align: center;">Descuento ($)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for d in discountSales %}
-            <tr style="border-bottom: 1px solid black; padding-top: 4px;">
-                <td style="font-size: 10px; padding-top: 3px;">{{ d.date }}</td>
-                <td style="font-size: 10px; text-align: center;">{{ d.invoice }}</td>
-                <td style="font-size: 10px; text-align: left;">{{ d.client }}</td>
-                <td style="font-size: 10px; text-align: center; padding-top: 3px;">{{ d.discount }} $</td>
-            </tr>
-            {% endfor %}
-            <tr style="border-top: 1px solid black; padding-top: 4px;">
-                <td style="font-size: 10px;"></td>
-                <td style="font-size: 10px;"></td>
-                <td style="font-size: 10px; text-align: right;">TOTAL</td>
-                <td style="font-size: 10px; text-align: center;">{{ totalDiscounts|floatformat:2 }} $</td>
-            </tr>
-        </tbody>
-    </table><br><br>
-    <span style="font-size: 10px; font-weight: 600; text-align: left;">3. INGRESOS POR MÉTODOS DE PAGO</span><br>
+    <span style="font-size: 10px; font-weight: 600; text-align: left;">2. INGRESOS POR MÉTODOS DE PAGO</span><br>
     <table id="invoice">
         <thead>
             <tr>
@@ -156,6 +129,33 @@
                 <td style="font-size: 10px; text-align: center;">TOTALES</td>
                 <td style="font-size: 10px; text-align: center;">{{ totalsBs|floatformat:2 }} Bs</td>
                 <td style="font-size: 10px; text-align: center;">{{ totals|floatformat:2 }} $</td>
+            </tr>
+        </tbody>
+    </table><br><br>
+     <span style="font-size: 10px; font-weight: 600; text-align: left;">3. VENTAS CON DESCUENTOS</span><br>
+    <table id="invoice">
+        <thead>
+            <tr>
+                <th style="font-size: 10px; width: 15%;">Fecha</th>
+                <th style="font-size: 10px; width: 15%; text-align: center;">Factura</th>
+                <th style="font-size: 10px; width: 50%; text-align: left;">Cliente</th>
+                <th style="font-size: 10px; width: 20%; text-align: center;">Descuento ($)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in discountSales %}
+            <tr style="border-bottom: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px; padding-top: 3px;">{{ d.date }}</td>
+                <td style="font-size: 10px; text-align: center;">{{ d.invoice }}</td>
+                <td style="font-size: 10px; text-align: left;">{{ d.client }}</td>
+                <td style="font-size: 10px; text-align: center; padding-top: 3px;">{{ d.discount }} $</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top: 1px solid black; padding-top: 4px;">
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px; text-align: right;">TOTAL</td>
+                <td style="font-size: 10px; text-align: center;">{{ totalDiscounts|floatformat:2 }} $</td>
             </tr>
         </tbody>
     </table><br><br>

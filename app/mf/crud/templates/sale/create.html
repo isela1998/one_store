@@ -235,6 +235,9 @@
         <button id="budget" type="button" class="btn btn-outline-info">
             <i class="fas fa-file-invoice"></i> Generar presupuesto
         </button>
+        <button id="product" type="button" class="btn btn-outline-info btnAdd">
+            <i class="fas fa-plus"></i> Registrar Producto
+        </button>
     </div>
     </div>
 </form>
@@ -282,6 +285,80 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-outline-info btn-block"><i class="fas fa-save"></i>
+                        Guardar</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Modal Agregar Productos -->
+<div class="modal fade" id="modalProduct" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <form method="post" action="." class="formProduct" enctype="multipart/form-data">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <b><i id="i_modal_title" class="fas fa-plus"></i> <i class="fas text-primary fa-boxes"></i>
+                            <span id="span_modal_title">NUEVO PRODUCTO</span></b>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <input name="action" type="hidden" value="addProduct">
+                        <input name="addOtherSedes" type="hidden" value="0">
+                        <input name="sede" type="hidden" value="">
+                        <input name="id" id="id" type="hidden" value="0">
+                        <div class="d-flex flex-row flex-nowrap">
+                            <div class="form-group" style="width: 60%;">
+                                <label>{{ formProduct.code.label }}</label>
+                                {{ formProduct.code }}
+                            </div>
+                            <div class="form-group" style="width: 40%; text-align: center;">
+                                <label>{{ formProduct.category.label }}</label>
+                                {{ formProduct.category }}
+                            </div>
+                        </div>
+                        <div class="d-flex flex-row flex-nowrap">
+                            <div class="form-group" style="width: 70%;">
+                                <label>{{ formProduct.brand.label }}</label>
+                                {{ formProduct.brand }}
+                            </div>
+                            <div class="form-group" style="width: 30%; text-align: center;">
+                                <label>{{ formProduct.type_product.label }}</label>
+                                {{ formProduct.type_product }}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>{{ formProduct.product.label }}</label>
+                            {{ formProduct.product }}
+                        </div>
+                        <div class="form-group">
+                            <label>{{ formProduct.description.label }}</label>
+                            {{ formProduct.description }}
+                        </div>
+                        <div class="d-flex flex-row flex-nowrap">
+                            <div class="form-group wd-35">
+                                <label>{{ formProduct.cost.label }}</label>
+                                {{ formProduct.cost }}
+                            </div>
+                            <div class="form-group wd-35">
+                                <label>{{ formProduct.price_dl.label }}</label>
+                                {{ formProduct.price_dl }}
+                            </div>
+                            <div class="form-group wd-30 text-center">
+                                <label>{{ formProduct.quantity.label }}</label>
+                                {{ formProduct.quantity|attr:'autocompletar:off' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" id="btn_submit" class="btn btn-outline-info btn-block"><i
+                            class="fas fa-save"></i>
                         Guardar</button>
                 </div>
             </div>

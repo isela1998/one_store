@@ -42,7 +42,7 @@ function getData() {
         render: function (data, type, row) {
           let group = '';
           $.each(row.groups, function (key, value) {
-            group += `<span class="badge color1 fill-available badge-info">${value.name}</span>`;
+            group += `<span class="badge bg-info fill-available badge-info">${value.name}</span>`;
           });
           return group;
         },
@@ -55,7 +55,7 @@ function getData() {
         targets: [-2],
         class: 'text-center',
         render: function (data, type, row) {
-          let username = `<span class="badge color1 fill-available badge-info">${data}</span>`;
+          let username = `<span class="badge bg-info fill-available badge-info">${data}</span>`;
           return username;
         },
       },
@@ -100,6 +100,8 @@ $(function () {
       $('form')[0].reset();
       let tr = tbUser.cell($(this).closest('td, li')).index();
       let data = tbUser.row(tr.row).data();
+      $('input[name="action"]').val('edit');
+      $('input[name="id"]').val(data.id);
       $('input[name="first_name"]').val(data.first_name);
       $('input[name="last_name"]').val(data.last_name);
       $('input[name="username"]').val(data.username);
