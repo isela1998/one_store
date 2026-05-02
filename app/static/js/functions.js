@@ -74,6 +74,33 @@ function submit_with_ajax(url, parameters, callback) {
     });
 }
 
+function submit_with_ajax_with_error(url, parameters, callback, error_callback) {
+    $.ajax({
+        url: url,
+        type: 'POST',
+        data: parameters,
+        dataType: 'json',
+        processData: false,
+        contentType: false,
+    })
+    .done(function (data) {
+        if (!data.hasOwnProperty('error')) {
+            callback(data);
+        } else {
+            message_error(data.error);
+            if (typeof error_callback === 'function') {
+                error_callback(data.error);
+            }
+        }
+    })
+    .fail(function (jqXHR, textStatus, errorThrown) {
+        message_error(textStatus + ': ' + errorThrown);
+        if (typeof error_callback === 'function') {
+            error_callback(errorThrown);
+        }
+    });
+}
+
 function alert_action(title, content, callback, cancel) {
   $.confirm({
     theme: 'material',

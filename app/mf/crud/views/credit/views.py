@@ -12,7 +12,8 @@ from django.utils import timezone
 from mf.crud.mixins import IsSuperuserMixin, ValidatePermissionMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from mf.crud.models import Credit, DetCredit
+from mf.crud.models import Credit, DetCredit, Method_pay
+from mf.crud.forms import DetCreditForm
 from mf.crud.functions import *
 from django.db.models import Q
 
@@ -42,14 +43,25 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 data = []
                 dl = get_dollar()
                 dl_value = dl.get('dolar1')
+                all = int(request.POST['all'])
 
-                for i in Credit.objects.using(db).filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']):
-                    item = i.toJSON()
-                    item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
-                    data.append(item)
+                print('all es',all)
+
+                if all == 0:
+                    for i in Credit.objects.filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']).exclude(totalDebt__lte=0):
+                        item = i.toJSON()
+                        item['dl'] = float(dl_value)
+                        item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
+                        data.append(item)
+                if all == 1:
+                    for i in Credit.objects.filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']):
+                        item = i.toJSON()
+                        item['dl'] = float(dl_value)
+                        item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
+                        data.append(item)
             elif action == 'searchdata2':
                 data = []
-                for i in DetCredit.objects.filter(credit__id=request.POST['id']):
+                for i in DetCredit.objects.filter(credit__id=request.POST['id']).exclude(status=0):
                     item = i.toJSON()
                     data.append(item)
             elif action == 'payment':
@@ -57,35 +69,68 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 datejoined = date.today().strftime('%Y-%m-%d')
                 credit = Credit.objects.get(pk=request.POST['idCredit'])
 
-                if(float(request.POST['totalPayment']) > float(credit.totalDebt)):
-                    data['error'] = 'El abono no puede ser mayor que la deuda'
+                dl = get_dollar()
+                dl_value = dl.get('dolar1')
+
+                with transaction.atomic():
+                    method = Method_pay.objects.get(pk=request.POST['method_pay'])
+                    totalPayment = request.POST['totalPayment']
+                    amount = 0
+                    amountBs = 0
+                    if method.type_symbol == '$':
+                        amount = float(totalPayment)
+                        amountBs = round((float(totalPayment) * float(dl_value)), 2)
+                        totalDebt = float(credit.totalDebt) - float(totalPayment)
+                    elif method.type_symbol == 'Bs':
+                        amountBs = float(totalPayment)
+                        amount = round((float(totalPayment) / float(dl_value)), 2)
+                        totalDebt = float(credit.totalDebt) - float(amount)
+                    credit.totalDebt = totalDebt
+                    credit.save()
+
+                    newDetCredit = DetCredit()
+                    newDetCredit.credit_id = credit.id
+                    newDetCredit.last_credit_date = datejoined
+                    newDetCredit.method_pay_id = request.POST['method_pay']
+                    newDetCredit.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
+                    newDetCredit.operation = '-'
+                    newDetCredit.quantity = float(amount)
+                    newDetCredit.quantitybs = float(amountBs)
+                    newDetCredit.description = request.POST['description']
+                    newDetCredit.save()
+            elif action == 'delete':
+                group = request.user.groups.first()
+                if group != 1:
+                    data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
+                else:
+                    Credit.objects.using(db).get(pk=request.POST['id']).delete()
+            elif action == 'deleteItem':
+                print('Entro en el delelte', request.POST)
+                group = request.user.groups.first()
+                if group.id != 1:
+                    data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
                 else:
                     with transaction.atomic():
-                        credit.totalDebt = float(credit.totalDebt) - float(request.POST['totalPayment'])
-                        credit.save()
+                        d = DetCredit.objects.get(pk=request.POST['id'])
 
-                        newDetCredit = DetCredit()
-                        newDetCredit.credit_id = credit.id
-                        newDetCredit.last_credit_date = datejoined
-                        newDetCredit.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
-                        newDetCredit.operation = '-'
-                        newDetCredit.quantity = float(request.POST['totalPayment'])
-                        newDetCredit.description = request.POST['description']
-                        newDetCredit.save()
-            elif action == 'delete':
-                perms = ['delete_product']
-                group = request.user.groups.first()
-                authorized = ValidatePermissions(perms, group)
-                if(authorized == False):
-                    data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
-                elif(authorized == True):
-                    Credit.objects.using(db).get(pk=request.POST['id']).delete()
+                        c = Credit.objects.get(pk=d.credit.id)
+                        c.totalDebt = float(c.totalDebt) + float(d.quantity)
+                        c.save()
+
+                        d.status = 0
+                        d.save()
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
             data['error'] = str(e)
         return JsonResponse(data, safe=False)
 
+    def get_methods_pay(self):
+        data = []
+        for i in Method_pay.objects.exclude(pk=1):
+            data.append(i.toJSON())
+        return data
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Listado de Creditos'
@@ -93,10 +138,12 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
         context['month'] = date.today().month
         context['monthName'] = getMonthName(int(date.today().month))
         context['year'] = date.today().year
+        context['form'] = DetCreditForm()
         context['data'] = getCompanyData()
         context['today'] = date.today()
         context['events'] = get_events_today()
         context['q_events'] = get_q_events_today()
+        context['methods'] = self.get_methods_pay()
         return context
 
 class CreditReportPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):

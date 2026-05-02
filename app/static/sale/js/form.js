@@ -488,7 +488,7 @@ $(function () {
       parameters.append('sales', JSON.stringify(sales.items));
       parameters.append('action', 'add');
       parameters.append('sede', sede);
-      submit_with_ajax(
+      submit_with_ajax_with_error(
         window.location.pathname,
         parameters,
         function (response) {
@@ -498,7 +498,6 @@ $(function () {
         },
         function (error) {
           btnSubmit.prop('disabled', false).text('Registrar Venta');
-          alertSweetErrorProducts('Ocurrió un error en el servidor, intente nuevamente');
         }
       );
     }

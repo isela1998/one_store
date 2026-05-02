@@ -109,9 +109,9 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
             if action == 'search_products':
                 data = []
                 term = request.POST['term']
-                code = Product.objects.using(db).filter(code__icontains=term).exclude(quantity=0)[0:10]
-                products = Product.objects.using(db).filter(product__icontains=term).exclude(quantity__lt=0)[0:10]
-                brand = Product.objects.using(db).filter(brand__icontains=term).exclude(quantity__lt=0)[0:10]
+                code = Product.objects.using(db).filter(code__icontains=term).exclude(quantity__lte=0)[0:10]
+                products = Product.objects.using(db).filter(product__icontains=term).exclude(quantity__lte=0)[0:10]
+                brand = Product.objects.using(db).filter(brand__icontains=term).exclude(quantity__lte=0)[0:10]
                 for i in code:
                     exist = 0
                     item = i.toJSON()
@@ -248,6 +248,7 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
             else:
                 data['error'] = 'No ha ingresado a ninguna opción'
         except Exception as e:
+            print(e)
             data['error'] = str(e)
         return JsonResponse(data, safe=False)
   
@@ -313,6 +314,7 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
                     newDet.last_credit_date = datejoined
                     newDet.datehour = sale.datehour
                     newDet.credit_id = updateCredit.id
+                    newDet.method_pay_id = 1
                     newDet.sale_id = sale.id
                     newDet.operation = '+'
                     newDet.quantity = float(total)
@@ -330,6 +332,7 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
                     newDet.last_credit_date = datejoined
                     newDet.datehour = sale.datehour
                     newDet.credit_id = newCredit.id
+                    newDet.method_pay_id = 1
                     newDet.sale_id = sale.id
                     newDet.operation = '+'
                     newDet.quantity = float(total)
@@ -513,14 +516,17 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
         data = []
         try:
             totalSales = 0
+            totalCredit = 0
             for m in Method_pay.objects.all().exclude(pk=1):
                 idMethodPay = m.id
                 name = m.name
                 quantity = 0
+                quantityC = 0
                 total = 0
                 total_bs = 0
                 type_total = m.type_symbol
                 sales = Sale.objects.filter(datejoined__gte=start, datejoined__lte=end).exclude(status=2)
+                credit = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end).exclude(operation='+').exclude(status=0)
                 for s in sales:
                     detail = s.toJSON()
                     totalSales = float(totalSales) + float(detail['total'])
@@ -542,6 +548,15 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                             total += float(detail['received2'])
                         elif type_total == 'Bs':
                             total_bs += float(detail['received2'])
+                for c in credit:
+                    detailC = c.toJSON()
+                    totalCredit = float(totalCredit) + float(detailC['quantity'])
+                    if detailC['method_pay']['id'] == idMethodPay:
+                        quantity += 1
+                        if type_total == '$':
+                            total += float(detailC['quantity'])
+                        elif type_total == 'Bs':
+                            total_bs += float(detailC['quantitybs'])
                 result = {
                     'id': idMethodPay,
                     'method': name,
@@ -554,7 +569,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
         except:
             pass
         return data
-
+    
     def getByProducts(self, start, end):
         data = []
         try:
@@ -602,10 +617,13 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
         data = []
         cash = 0
         credit = 0
+        payments = 0
         totalCash = 0
         totalCredit = 0
+        totalPayments = 0
 
         try:
+            allPayments = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end).exclude(operation='+').exclude(status=0)
             allSales = Sale.objects.filter(datejoined__gte=start, datejoined__lte=end).exclude(status=2)
             for a in allSales:
                 i = a.toJSON()
@@ -615,11 +633,17 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 elif i['type_sale'] == 'Crédito':
                     credit = credit + 1
                     totalCredit += float(i['total'])
+            for a in allPayments:
+                i = a.toJSON()
+                payments = payments +1
+                totalPayments = float(totalPayments) + float(i['quantity'])
             data = {
                 'cash': cash,
                 'credit': credit,
+                'payments': payments,
                 'totalCash': round(totalCash, 2),
                 'totalCredit': round(totalCredit, 2),
+                'totalPayments': round(totalPayments, 2),
             }
         except:
             pass
@@ -644,15 +668,24 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     def getPayments(self, start, end):
         data = []
         try:
-            allPayment = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end, operation='-')
+            allPayment = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end, operation='-').exclude(status=0)
             for p in allPayment:
+                quantity = 0
+                quantityBs = 0
                 item = p.toJSON()
+                typeSimbol = p.method_pay.type_symbol
                 credit = Credit.objects.get(pk=p.credit.id)
                 client = credit.client.names + ' ' + ' ' + credit.client.identity + '' + credit.client.ci
+                if typeSimbol == '$':
+                    quantity += float(item['quantity'])
+                elif typeSimbol == 'Bs':
+                    quantityBs += float(item['quantitybs'])
                 detail = {
                     'date': item['last_credit_date'].strftime('%d/%m/%Y'),
                     'client': client,
-                    'quantity': float(item['quantity'])
+                    'method': p.method_pay.name,
+                    'quantity': quantity,
+                    'quantityBs': quantityBs
                 }
                 data.append(detail)
         except:
@@ -695,9 +728,11 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 pass
 
             totalPayments = 0
+            totalPaymentsBs = 0
             try:
                 for i in payments:
                     totalPayments += float(i['quantity'])
+                    totalPaymentsBs += float(i['quantityBs'])
             except:
                 pass
 
@@ -709,9 +744,10 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     totalProducts += float(i['quantity'])
             except:
                 pass
+
             totalTypeSales = 0
             try:
-                totalTypeSales = float(typeSales['totalCash']) + float(typeSales['totalCredit'])
+                totalTypeSales = float(typeSales['totalCash']) + float(typeSales['totalCredit']) + float(typeSales['totalPayments'])
             except:
                 pass
             
@@ -725,6 +761,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 'discountSales': discountSales,
                 'totalDiscounts': totalDiscounts,
                 'totalPayments': totalPayments,
+                'totalPaymentsBs': totalPaymentsBs,
                 'payments': payments,
                 'totals': round(totals, 2),
                 'totalsBs': round(totalsBs, 2),
