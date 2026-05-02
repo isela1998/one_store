@@ -31,6 +31,7 @@ function getData() {
             { "data": "product" },
             { "data": "cost" },
             { "data": "price_dl" },
+            { "data": "quantity" },
             { "data": "gain" },
         ],
         dom: '<"myCustomClass"f>rt<"bottom"lp><"clear">',
@@ -78,7 +79,7 @@ function getData() {
         },
         columnDefs: [
             {
-                targets: [-7],
+                targets: [-8],
                 class: 'text-center',
                 render: function (data, type, row) {
                     let code = '<span class="badge text-dark fill-available badge-info"><b>' + data + '</b></span>';
@@ -86,7 +87,7 @@ function getData() {
                 }
             },
             {
-                targets: [-4],
+                targets: [-5],
                 class: 'text-left',
                 render: function(data, type, row){
                     let product = data + ' (' + row.type_product.name + ') ' + row.description;
@@ -94,7 +95,16 @@ function getData() {
                 }
             },
             {
-                targets: [-1,-2,-3],
+                targets: [-2],
+                class: 'text-center',
+                orderable: false,
+                render: function (data, type, row) {
+                    let quantity = `<span class="${row.css}" style="width: 30px;">${data}</span`;
+                    return quantity;
+                },
+            },
+            {
+                targets: [-1,-3,-4],
                 class: 'text-center',
                 render: $.fn.dataTable.render.number('.', ',', 2)
             },
