@@ -1,2 +1,4 @@
 env
 app/manage.py
+app\config\__pycache__
+app/config/__pycache__
