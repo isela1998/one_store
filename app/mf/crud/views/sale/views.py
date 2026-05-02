@@ -425,7 +425,7 @@ class SaleInvoicePdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 'sale': sale,
                 'comp': dataCompany,
                 'url': getStaticUrl(),
-                'icon': 'https://jeantren-86cc3b8c232c.herokuapp.com/media/img/logo/logo.png',
+                'icon': 'http://127.0.0.1:8000/media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')
@@ -698,7 +698,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 'totalProducts': totalProducts,
                 'comp': dataCompany,
                 'url': getStaticUrl(),
-                'icon': 'https://jeantren-86cc3b8c232c.herokuapp.com/media/img/logo/logo.png',
+                'icon': 'http://127.0.0.1:8000/media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')
