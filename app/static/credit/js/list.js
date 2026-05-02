@@ -89,7 +89,7 @@ function getData(start, end, all) {
 function getData2(id) {
   tbCredit = $('#data2').DataTable({
     ordering: true,
-    order: [[1, 'asc']],
+    order: [[6, 'desc']],
     searching: false,
     paging: true,
     info: false,
@@ -113,13 +113,14 @@ function getData2(id) {
       { data: 'operation' },
       { data: 'datehour' },
       { data: 'quantity' },
+      { data: 'quantitybs' },
       { data: 'description' },
       { data: 'sale.id' },
       { data: 'id' },
     ],
     columnDefs: [
       {
-        targets: [-6],
+        targets: [-7],
         class: 'text-center',
         orderable: true,
         render: function (data, type, row) {
@@ -131,11 +132,19 @@ function getData2(id) {
         },
       },
       {
-        targets: [-4],
+        targets: [-5],
         class: 'text-center',
         orderable: true,
         render: function (data, type, row) {
           return data + ' $';
+        },
+      },
+            {
+        targets: [-4],
+        class: 'text-center',
+        orderable: true,
+        render: function (data, type, row) {
+          return data + ' Bs';
         },
       },
       {

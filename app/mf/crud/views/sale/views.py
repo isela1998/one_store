@@ -336,6 +336,7 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
                     newDet.sale_id = sale.id
                     newDet.operation = '+'
                     newDet.quantity = float(total)
+                    newDet.quantitybs = total * float(dl)
                     newDet.description = 'Factura # ' + str(sale.invoice_number)
                     newDet.save()
 

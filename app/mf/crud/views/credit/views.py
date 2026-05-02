@@ -44,9 +44,7 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 dl = get_dollar()
                 dl_value = dl.get('dolar1')
                 all = int(request.POST['all'])
-
-                print('all es',all)
-
+                
                 if all == 0:
                     for i in Credit.objects.filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']).exclude(totalDebt__lte=0):
                         item = i.toJSON()
