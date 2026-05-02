@@ -6,6 +6,7 @@ from mf.crud.views.category.views import *
 from mf.crud.views.brand.views import *
 from mf.crud.views.type.views import *
 from mf.crud.views.product.views import *
+from mf.crud.views.gainMargin.views import *
 from mf.crud.views.client.views import *
 from mf.crud.views.method.views import *
 from mf.crud.views.sale.views import *
@@ -31,6 +32,7 @@ urlpatterns = [
     path('tipos/list/', TypeListView.as_view(), name='type_list'),
     # Products
     path('productos/list/', ProductListView.as_view(), name='products_list'),
+    path('gainMargin/list/', GainMaginListView.as_view(), name='gain_list'),
     # Inventary
     path('productos/inventario/pdf/', InventaryPdfView.as_view(), name='inventary_pdf'),
     # Clients

@@ -1,0 +1,36 @@
+{% extends 'list.html' %} {% load widget_tweaks %} {% load static %} {% load humanize %} {% block head_list %}
+<script src="{% static 'gainMargin/js/list.js' %}"></script>
+<script src="{% static 'js/dolar.js' %}"></script>
+{% endblock %}
+{% block grow1 %}
+    <div class="float-right mb-2 ml-2">
+        <label class="mr-2">GANANCIA ($)</label>
+        <input name="total-ganancia" id="total-ganancia" type="text" 
+               class="text-center form-control d-inline-block text-right font-weight-bold" 
+               style="width: 100px; background-color: white; font-size: 1rem; color: #28a745;" readonly>
+    </div>
+    <div class="float-right mb-2 ml-2">
+        <label class="mr-2">VENTA ($)</label>
+        <input name="total-venta" id="total-venta" type="text" 
+               class="text-center form-control d-inline-block text-right font-weight-bold" 
+               style="width: 100px; background-color: white; font-size: 1rem; color: #28a745;" readonly>
+    </div>
+    <div class="float-right mb-2 ml-2">
+        <label class="mr-2">INVERSIÓN ($)</label>
+        <input name="total-inversion" id="total-inversion" type="text" 
+               class="text-center form-control d-inline-block text-right font-weight-bold" 
+               style="width: 100px; background-color: white; font-size: 1rem; color: #28a745;" readonly>
+    </div>
+{% endblock %}
+{% block dolar %} {% endblock %} {% block columns %}
+<tr>
+    <th scope="col" style="width: 10%;">Código</th>
+    <th scope="col" style="width: 15%;">Categoría</th>
+    <th scope="col" style="width: 10%;">Marca</th>
+    <th scope="col" style="width: 35%;">Producto</th>
+    <th scope="col" style="width: 10%;">Precio|Costo</th>
+    <th scope="col" style="width: 10%;">Precio|Venta</th>
+    <th scope="col" style="width: 10%;">Ganancia</th>
+</tr>
+{% endblock %} {% block rows %} {% endblock %} {% block buttons_list %} {% endblock %} {% block javascript %}
+{% endblock %}

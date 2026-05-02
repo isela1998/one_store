@@ -47,6 +47,14 @@
                         </p>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="{% url 'crud:gain_list' %}" class="nav-link">
+                        <i class="nav-icon fas fa-comments-dollar"></i>
+                        <p class="p-nav">
+                            Margen de Ganancias
+                        </p>
+                    </a>
+                </li>
                 {% if request.user.is_superuser %}
                 <li class="nav-item">
                     <a href="{% url 'crud:client' %}" class="nav-link">
