@@ -35,7 +35,7 @@ class GainMaginListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateVie
             action = request.POST['action']
             if action == 'searchdata':
                 data = []
-                for i in Product.objects.all():
+                for i in Product.objects.exclude(cost__lte=0.00):
                     item = i.toJSON()
                     item['gainU'] = float(item['price_dl']) - float(item['cost'])
                     item['gain'] = (float(item['price_dl']) - float(item['cost'])) * float(item['quantity'])
