@@ -418,7 +418,7 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
         context['methods'] = self.get_methods_pay()
         context['invoice_number'] = self.get_lastet_invoice_number()
         context['action'] = 'add'
-        context['dl'] = get_dollar()
+        # context['dl'] = get_dollar()
         context['det'] = []
         context['cli'] = []
         context['data'] = getCompanyData()

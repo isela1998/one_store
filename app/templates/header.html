@@ -6,9 +6,11 @@
             <a class="nav-link" id="pushmenu" onclick="display_logo()" data-widget="pushmenu" href="#" role="button"><i
                     id="icon-expand" class="fas fa-bars text-white" style="font-size: 20px!important;"></i></a>
         </li>
+        {% if dl %}
         <li class="nav-item dropdown" style="margin: 5px;">
             <small class="text-m2 text-white">Tasa ($): {{ dl.dolar1|floatformat:2 }} bs</small>
         </li>
+        {% endif %}
     </ul>
 
     <ul class="navbar-nav ml-auto">
