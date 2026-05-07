@@ -58,15 +58,27 @@ class SaleListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             elif action == 'return':
                 datejoined = date.today().strftime('%Y-%m-%d')
                 sale = Sale.objects.using(db).get(pk=request.POST['id'])
-                if(sale.status == 2):
+                
+                if sale.status == 2:
                     data['error'] = 'Ya esta venta fue anulada anteriormente'
                 else:
-                    with transaction.atomic():
+                    with transaction.atomic(using=db):
                         det = DetSale.objects.using(db).filter(sale_id=request.POST['id'])
                         for i in det:
                             pw = Product.objects.using(db).get(pk=i.prod_id)
                             pw.quantity = float(pw.quantity) + float(i.quantity)
                             pw.save(using=db)
+                            
+                        if sale.type_sale == 'Crédito':
+                            det_credits = DetCredit.objects.using(db).filter(sale=sale)
+                                
+                            for dc in det_credits:
+                                credit_header = dc.credit
+                                credit_header.totalDebt -= dc.quantity
+                                credit_header.save(using=db)
+                                    
+                                dc.delete(using=db)
+
                         sale.status = 2
                         sale.save(using=db)
             else:
