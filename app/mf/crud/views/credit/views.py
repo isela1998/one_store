@@ -37,26 +37,41 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
         data = {}
         db = 'default'
         try:
-            sede = ''
+            sede = 'default'
             action = request.POST['action']
             if action == 'searchdata':
                 data = []
                 dl = get_dollar()
                 dl_value = dl.get('dolar1')
                 all = int(request.POST['all'])
+                include = int(request.POST['include'])
                 
                 if all == 0:
-                    for i in Credit.objects.filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']).exclude(totalDebt__lte=0):
-                        item = i.toJSON()
-                        item['dl'] = float(dl_value)
-                        item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
-                        data.append(item)
+                    if include == 0:
+                        for i in Credit.objects.filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']).exclude(totalDebt__lte=0):
+                            item = i.toJSON()
+                            item['dl'] = float(dl_value)
+                            item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
+                            data.append(item)
+                    if include == 1:
+                        for i in Credit.objects.filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']):
+                            item = i.toJSON()
+                            item['dl'] = float(dl_value)
+                            item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
+                            data.append(item)
                 if all == 1:
-                    for i in Credit.objects.filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']):
-                        item = i.toJSON()
-                        item['dl'] = float(dl_value)
-                        item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
-                        data.append(item)
+                    if include == 0:
+                        for i in Credit.objects.filter(totalDebt__gt=0):
+                            item = i.toJSON()
+                            item['dl'] = float(dl_value)
+                            item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
+                            data.append(item)
+                    if include == 1:
+                         for i in Credit.objects.all():
+                            item = i.toJSON()
+                            item['dl'] = float(dl_value)
+                            item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
+                            data.append(item)
             elif action == 'searchdata2':
                 data = []
                 for i in DetCredit.objects.filter(credit__id=request.POST['id']).exclude(status=0):
@@ -64,9 +79,19 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     data.append(item)
             elif action == 'payment':
                 dateHour = timezone.localtime(timezone.now())
-                datejoined = date.today().strftime('%Y-%m-%d')
-                credit = Credit.objects.get(pk=request.POST['idCredit'])
+                date_joined_str = request.POST['datejoined']
+                if date_joined_str:
+                    date_obj = datetime.strptime(date_joined_str, '%Y-%m-%d')
+                    datejoined = date_obj.strftime('%Y-%m-%d')
 
+                    current_time = timezone.localtime(timezone.now()).time()
+                    dateHour = datetime.combine(date_obj, current_time)
+                else:
+                    now = timezone.localtime(timezone.now())
+                    datejoined = date.today().strftime('%Y-%m-%d')
+                    dateHour = now
+
+                credit = Credit.objects.get(pk=request.POST['idCredit'])
                 dl = get_dollar()
                 dl_value = dl.get('dolar1')
 

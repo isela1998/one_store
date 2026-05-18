@@ -9,7 +9,9 @@ function get_graph_sales() {
   })
     .done(function (data) {
       if (!data.hasOwnProperty('error')) {
-        graphcolumn.addSeries(data);
+        $.each(data, function (index, value) {
+            graphcolumn.addSeries(value);
+        });
         return false;
       }
       message_error(data.error);
@@ -70,6 +72,8 @@ function alertSweet() {
 
 function up_dolar() {
   var dolar = document.getElementById('dolar').value;
+  dolar = dolar.replace(',', '.');
+  
   var parameters = new FormData();
   parameters.append('dolar', dolar);
   parameters.append('sede', '');

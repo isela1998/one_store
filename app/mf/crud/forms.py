@@ -365,7 +365,7 @@ class ProductForm(ModelForm):
                 }
             ),
         }
-        exclude = ['price_bs', 'gain', 'price']
+        exclude = ['price_bs', 'gain', 'price', 'status']
 
     def save(self, commit=True):
         data = {}
@@ -398,7 +398,7 @@ class ProductUpForm(ModelForm):
                 'value': '0.000',
             }),
         }
-        exclude = ['product', 'code', 'category', 'type_product', 'brand', 'description', 'price', 'cost', 'gain', 'price_dl', 'price_bs']
+        exclude = ['product', 'code', 'category', 'type_product', 'brand', 'description', 'price', 'cost', 'gain', 'price_dl', 'price_bs', 'status']
 
     def save(self, commit=True):
         data = {}

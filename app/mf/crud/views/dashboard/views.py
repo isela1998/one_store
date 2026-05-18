@@ -14,7 +14,7 @@ from mf.crud.mixins import IsSuperuserMixin, ValidatePermissionMixin
 from datetime import date
 from datetime import datetime, timedelta
 
-from mf.crud.models import Dolar, Product, Sale, DetSale
+from mf.crud.models import Dolar, Product, Sale, DetSale, DetCredit, Credit
 from django.db.models.functions import Coalesce
 from django.db.models import Sum
 
@@ -38,23 +38,18 @@ class DashboardView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
             db = 'default'
             action = request.POST['action']
             if action == 'get_graph_sales':
-                year = datetime.now().year
-                for m in range(1, 13):
-                    total = Sale.objects.using(db).filter(datejoined__year=year, datejoined__month=m).aggregate(
-                        r=Coalesce(Sum('total'), 0)).get('r')
-                data = {
-                    'name': 'Ingresos',
-                    'showInLegend': False,
-                    'colorByPoint': True,
-                    'data': self.get_graph_sales(db)
-                }
+                group = request.user.groups.first()
+                if group.id == 1:
+                    data = self.get_graph_sales(db)
             elif action == 'get_graph_products':
-                data = {
-                    'name': 'Ventas',
-                    'text': 'Productos',
-                    'colorByPoint': True,
-                    'data': self.get_graph_products(db)
-                }
+                group = request.user.groups.first()
+                if group.id == 1:
+                    data = {
+                        'name': 'Ventas',
+                        'text': 'Productos',
+                        'colorByPoint': True,
+                        'data': self.get_graph_products(db)
+                    }
             elif action == 'upDolar':
                 perms = ['change_dolar',]
                 group = request.user.groups.first()
@@ -84,35 +79,85 @@ class DashboardView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
             p.price_bs = float(p.price_dl) * float(dl)
             p.save()
         return data
-    
+
     def get_graph_sales(self, db):
-        data = []
+        data_contado = []
+        data_credito = []
+        data_abonos = []
+        
         try:
             year = datetime.now().year
             for m in range(1, 13):
-                total = Sale.objects.using(db).filter(datejoined__year=year, datejoined__month=m).aggregate(
-                    r=Coalesce(Sum('total'), 0)).get('r')
-                data.append(float(total))
-        except:
-            pass
-        return data
+                # Ventas al contado (status=0)
+                total_contado = Sale.objects.filter(
+                    datejoined__year=year, 
+                    datejoined__month=m, 
+                    status=0
+                ).aggregate(r=Coalesce(Sum('total'), 0.0)).get('r')
+                data_contado.append(float(total_contado))
+                
+                # Ventas a crédito (status=1)
+                total_credito = Sale.objects.filter(
+                    datejoined__year=year, 
+                    datejoined__month=m, 
+                    status=1
+                ).aggregate(r=Coalesce(Sum('total'), 0.0)).get('r')
+                data_credito.append(float(total_credito))
+
+                # Créditos cobrados (status=1)
+                total_abonos = DetCredit.objects.filter(
+                    last_credit_date__year=year, 
+                    last_credit_date__month=m, 
+                    status=1,
+                    operation='-'
+                ).aggregate(r=Coalesce(Sum('quantity'), 0.0)).get('r')
+                data_abonos.append(float(total_abonos))
+
+                
+        except Exception as e:
+            print(f"Error en la gráfica: {e}")
+            
+        return [
+            {
+                'name': 'Ventas al Contado',
+                'data': data_contado,
+                'color': '#2ecc71'
+            },
+            {
+                'name': 'Ventas a Crédito',
+                'data': data_credito,
+                'color': '#f6c23e'
+            },
+            {
+                'name': 'Abonos de Créditos',
+                'data': data_abonos,
+                'color': '#40e0d0'
+            }
+        ]
 
     def get_graph_products(self, db):
         data = []
         year = datetime.now().year
         month = datetime.now().month
         try:
-            sales_data = DetSale.objects.using(db).filter(sale__datejoined__year=year,
-                sale__datejoined__month=month).values('prod__brand', 'prod__product'
-            ).annotate(total_sold=Sum('total')).order_by('-total_sold')[:15]
+            sales_data = DetSale.objects.using(db).filter(
+                sale__datejoined__year=year,
+                sale__datejoined__month=month,
+                prod__status=1
+            ).values(
+                'prod__brand', 'prod__product'
+            ).annotate(
+                total_qty=Sum('quantity') 
+            ).order_by('-total_qty')[:15]
             
             for item in sales_data:
                 data.append({
                     'name': f"{item['prod__brand']} {item['prod__product']}",
-                    'y': float(item['total_sold'])
+                    'y': float(item['total_qty']) 
                 })
-        except:
-            pass
+        except Exception as e:
+            print(f"Error en productos: {e}")
+            
         return data
 
     def get_name_month(self):

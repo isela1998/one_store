@@ -95,21 +95,24 @@ var sales = {
         const $input = $(row).find('input[name="quantity"]');
 
         $input.TouchSpin({
-            min: 0.001,
-            max: data.qinitial,
-            step: 0.001, // Cambiado a 0.001 para que el + y - funcionen con precisión
+            min: 0.000,
+            max: data.initial,
+            step: 1,
             forcestepdivisibility: 'none',
             decimals: 3,
             boostat: 5,
-            maxboostedstep: 10,
-        }).on('change touchspin.on.stopspin', function () {
-            // Obtenemos el valor actual como número para eliminar ceros a la derecha
-            const val = parseFloat($(this).val());
-            // Lo volvemos a asignar al input
-            $(this).val(val);
+            maxboostedstep: 10
+        }).on('change touchspin.on.stopspin blur', function () {
+          let val = parseFloat($(this).val());
+          const max = parseFloat(data.initial);
+
+          if (val > max) val = max;
+          if (val <= 0 || isNaN(val)) {
+              val = 1;
+          }
+          $(this).val(val);
         });
 
-        // Disparar el cambio manualmente al inicio para limpiar el valor que viene del servidor
         $input.trigger('change');
       },
       initComplete: function (settings, json) {},
@@ -433,16 +436,34 @@ $(function () {
     else return false;
   }
 
-  //Send data
+  // Send data
   $('#formSale').on('submit', function (e) {
     e.preventDefault();
     let btnSubmit = $(this).find('button[type="submit"]');
+    
     convertToUpperCase();
-    // Validations in the form
+    
     let difference = $('input[name="totalDlR"]').val();
     let check1 = document.getElementById('cash_payment').checked;
     let check2 = document.getElementById('credit_payment').checked;
     let select_cli = $('select[name="searchClient"]').val();
+
+    if (!sales.items || !sales.items.products || sales.items.products.length == 0) {
+      alertSweetErrorProducts('Debe agregar al menos un producto a la venta');
+      return false;
+    }
+
+    let carritovalido = true;
+    sales.items.products.forEach(function(prod) {
+      if (parseFloat(prod.quantity) <= 0 || isNaN(parseFloat(prod.quantity))) {
+        carritovalido = false;
+      }
+    });
+
+    if (!carritovalido) {
+      alertSweetErrorProducts('Hay productos en la tabla con cantidades inválidas o en cero.');
+      return false;
+    }
 
     if (check1 == true) {
       if (!getDifference()) {
@@ -450,10 +471,8 @@ $(function () {
         return false;
       }
     }
-    if (sales.items.products.length == 0) {
-      alertSweetErrorProducts('Debe agregar un producto');
-      return false;
-    } else if (select_cli == '') {
+
+    if (select_cli == '') {
       alertSweetErrorProducts('Faltan los datos del Cliente');
       return false;
     } else if (
@@ -462,46 +481,72 @@ $(function () {
       $('input[name="method_pay1"]').val() == 1 &&
       $('input[name="method_pay2"]').val() == 1
     ) {
-      alertSweetErrorProducts('Verifique los métodos de pago');
+      alertSweetErrorProducts('Verifique los métodos de pago seleccionados');
       return false;
     } else if (
       check1 == true &&
-      $('input[name="received"]').val() == 0 &&
-      $('input[name="received1"]').val() == 0 &&
-      $('input[name="received2"]').val() == 0
+      parseFloat($('input[name="received"]').val() || 0) == 0 &&
+      parseFloat($('input[name="received1"]').val() || 0) == 0 &&
+      parseFloat($('input[name="received2"]').val() || 0) == 0
     ) {
-      alertSweetErrorProducts('Verifique los métodos de pago');
+      alertSweetErrorProducts('Verifique los montos recibidos en los métodos de pago');
       return false;
     } else if (check1 != true && check2 != true) {
-      alertSweetErrorProducts('Seleccione el Método de Pago');
+      alertSweetErrorProducts('Seleccione el Método de Pago (Contado o Crédito)');
       return false;
-    } else {
-      // Control de botón de envío
-      btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
-      // Send Data
-      $('input[name="request"]').val(1);
-      document.getElementById('id_received').disabled = false;
-      document.getElementById('id_received1').disabled = false;
-      document.getElementById('id_received2').disabled = false;
-      // document.getElementById('id_discount').disabled = false;
-      let parameters = new FormData(this);
-      parameters.append('sales', JSON.stringify(sales.items));
-      parameters.append('action', 'add');
-      parameters.append('sede', sede);
-      submit_with_ajax_with_error(
-        window.location.pathname,
-        parameters,
-        function (response) {
-          alertSweetSuccess('Venta registrada con Éxito');
-          window.location.reload();
-          location.href = '#top';
-        },
-        function (error) {
-          btnSubmit.prop('disabled', false).text('Registrar Venta');
-        }
-      );
     }
+
+    if (check1 == true) {
+      let difCalculada = parseFloat($('input[name="totalDlR"]').val() || 0);
+
+      if (difCalculada < 0) {
+        let sobrepago = Math.abs(difCalculada).toFixed(2);
+        let total_factura = parseFloat(sales.items.total || 0).toFixed(2);
+
+        alert_action(
+          'Alerta de excedente',
+          `Se ha detectado un excedente de ${sobrepago}$ sobre el total de la factura. ¿Confirma que desea continuar?`,
+          function () {
+            ejecutarEnvioVenta($('#formSale')[0], btnSubmit);
+          },
+          function () {
+          }
+        );
+
+        return false;
+      }
+    }
+
+    ejecutarEnvioVenta(this, btnSubmit);
   });
+
+  function ejecutarEnvioVenta(formElement, btnSubmit) {
+    btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
+    $('input[name="request"]').val(1);
+    
+    $('#id_received, #id_received1, #id_received2').prop('disabled', false);
+
+    let parameters = new FormData(formElement);
+    parameters.append('sales', JSON.stringify(sales.items));
+    parameters.append('action', 'add');
+    parameters.append('sede', sede);
+
+    submit_with_ajax_with_error(
+      window.location.pathname,
+      parameters,
+      function (response) {
+        alertSweetSuccess('Venta registrada con Éxito');
+        setTimeout(function () {
+            window.location.reload();
+            location.href = '#top';
+        }, 3000);
+        location.href = '#top';
+      },
+      function (error) {
+        btnSubmit.prop('disabled', false).text('Registrar Venta');
+      }
+    );
+  }
 
   $('#budget').on('click', function (e) {
     e.preventDefault();
@@ -576,14 +621,11 @@ function optionsTypeSale() {
   if (document.getElementById('cash_payment').checked == true) {
     cash_payment();
     $('#description')
-      .val('Sin observaciones')
-      .attr('placeholder', 'Agregue un comentario o nota de la venta...');
+      .val('Sin observaciones').attr('placeholder', 'Agregue un comentario o nota de la venta...');
     $('select[name="method_pay"]').val(1);
   } else if (document.getElementById('credit_payment').checked == true) {
     credit_payment();
-    sales.calculate_invoice();
     $('#description')
-      .val('Sin observaciones')
       .attr('placeholder', 'Indique detalles del crédito ó presupuesto...');
   }
 }
