@@ -41,13 +41,12 @@ class ProductListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
             action = request.POST['action']
             if action == 'searchdata':
                 data = []
-                for i in Product.objects.using(db).all():
+                for i in Product.objects.exclude(status=0):
                     item = i.toJSON()
                     try:
+                        css = 'badge color2 fill-available text-light pointer-1'
                         if(i.quantity < 5):
                             css = 'badge color1 fill-available text-light pointer-1'
-                        elif(i.quantity > 5):
-                            css = 'badge color2 fill-available text-light pointer-1'
                         item['css'] = css
                         data.append(item)
                     except Exception as e:
@@ -153,7 +152,10 @@ class ProductListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
                 if(authorized == False):
                     data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
                 elif(authorized == True):
-                    product = Product.objects.using(db).get(pk=request.POST['id']).delete()
+                    p = Product.objects.get(pk=request.POST['id'])
+                    p.code = 'DELETE-' + p.code
+                    p.status = 0
+                    p.save()
             else:
                 data['error'] = "Ha ocurrido un error"
         except Exception as e:
@@ -218,7 +220,7 @@ class InventaryPdfView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView
             dataCompany = getCompanyData()
             totalInventary = 0
             
-            for i in Product.objects.all().order_by('category'):
+            for i in Product.objects.exclude(status=0).order_by('category'):
                 totalInventary += i.quantity
                 data.append(i.toJSON())
 

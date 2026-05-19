@@ -7,7 +7,7 @@ from django.db import transaction
 from datetime import date, datetime, timedelta
 import json
 from django.utils import timezone
-
+from decimal import Decimal
 
 from mf.crud.mixins import IsSuperuserMixin, ValidatePermissionMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -121,9 +121,9 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
             if action == 'search_products':
                 data = []
                 term = request.POST['term']
-                code = Product.objects.using(db).filter(code__icontains=term).exclude(quantity__lte=0)[0:10]
-                products = Product.objects.using(db).filter(product__icontains=term).exclude(quantity__lte=0)[0:10]
-                brand = Product.objects.using(db).filter(brand__icontains=term).exclude(quantity__lte=0)[0:10]
+                code = Product.objects.using(db).filter(code__icontains=term).exclude(quantity__lte=0).exclude(status=0)[0:10]
+                products = Product.objects.using(db).filter(product__icontains=term).exclude(quantity__lte=0).exclude(status=0)[0:10]
+                brand = Product.objects.using(db).filter(brand__icontains=term).exclude(quantity__lte=0).exclude(status=0)[0:10]
                 for i in code:
                     exist = 0
                     item = i.toJSON()
@@ -178,7 +178,7 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
                     if exist == 0:
                         data.append(item)
             elif action == 'add':
-                self.addSale(db, request.POST, request.user)
+                data = self.addSale(db, request.POST, request.user)
             elif action == 'addBudget':
                 datejoined = date.today().strftime('%Y-%m-%d')
                 dolar = Dolar.objects.using(db).get(pk=1)
@@ -263,113 +263,233 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
             print(e)
             data['error'] = str(e)
         return JsonResponse(data, safe=False)
-  
+
     def addSale(self, db, requestPOST, requestUser):
-        data = []
+        data = {}
         datejoined = date.today().strftime('%Y-%m-%d')
-        dolar = Dolar.objects.using(db).get(pk=1)
-        dl = float(dolar.dolar)
+        
+        dolar_obj = Dolar.objects.using(db).get(pk=1)
+        dl = Decimal(str(dolar_obj.dolar)) 
 
         clientId = int(requestPOST['searchClient'])
         sales = json.loads(requestPOST['sales'])
 
-        # Validate pay
-        saveCreditDetail = 0
-        with transaction.atomic():
-            sale = Sale()
-            dateHour = timezone.localtime(timezone.now())
-            total = float(sales['total']) - float(sales['discount'])
-            sale.user = requestUser.username
-            sale.datejoined = datejoined
-            sale.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
-            sale.client_id = clientId
-            sale.subtotal = float(sales['total'])
-            sale.discount = float(sales['discount'])
-            sale.total = total
-            sale.totalBs = total * float(dl)
-            type_sale = requestPOST['inlineRadioOptions']
-            if type_sale == 'option1':
-                sale.type_sale = 'Al Contado'
-                sale.method_pay_id = requestPOST['method_pay']
-                sale.received = float(requestPOST['received'])
-                sale.method_pay1_id = requestPOST['method_pay1']
-                sale.received1 = float(requestPOST['received1'])
-                sale.method_pay2_id = requestPOST['method_pay2']
-                sale.received2 = float(requestPOST['received2'])
-            elif type_sale == 'option2':
-                saveCreditDetail = 1
-                sale.type_sale = 'Crédito'
-                sale.method_pay_id = 1
-                sale.received = '0.00'
-                sale.exchange = '0.00'
-                sale.method_pay1_id = 1
-                sale.received1 = '0.00'
-                sale.exchange1 = '0.00'
-                sale.method_pay2_id = 1
-                sale.received2 = '0.00'
-                sale.exchange2 = '0.00'
-                sale.status = 1
-            sale.rate = float(dl)
-            sale.description = requestPOST['description']
-            sale.invoice_number = self.get_lastet_invoice(db)
-            sale.save(using=db)
+        saveCreditDetail = False
+        
+        try:
+            with transaction.atomic(using=db):
+                sale = Sale()
+                dateHour = timezone.localtime(timezone.now())
+                
+                subtotal = Decimal(str(sales['total']))
+                discount = Decimal(str(sales['discount']))
+                total = subtotal - discount
+                
+                sale.user = requestUser.username
+                sale.datejoined = datejoined
+                sale.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
+                sale.client_id = clientId
+                sale.subtotal = subtotal
+                sale.discount = discount
+                sale.total = total
+                sale.totalBs = total * dl
+                sale.rate = dl
+                sale.description = requestPOST.get('description', '')
+                sale.invoice_number = self.get_lastet_invoice(db)
+                
+                type_sale = requestPOST['inlineRadioOptions']
+                
+                if type_sale == 'option1':
+                    sale.type_sale = 'Al Contado'
+                    sale.method_pay_id = requestPOST['method_pay']
+                    sale.received = Decimal(str(requestPOST.get('received', '0.00')))
+                    sale.method_pay1_id = requestPOST['method_pay1']
+                    sale.received1 = Decimal(str(requestPOST.get('received1', '0.00')))
+                    sale.method_pay2_id = requestPOST['method_pay2']
+                    sale.received2 = Decimal(str(requestPOST.get('received2', '0.00')))
+                elif type_sale == 'option2':
+                    saveCreditDetail = True
+                    sale.type_sale = 'Crédito'
+                    sale.method_pay_id = 1
+                    sale.received = Decimal('0.00')
+                    sale.exchange = Decimal('0.00')
+                    sale.method_pay1_id = 1
+                    sale.received1 = Decimal('0.00')
+                    sale.exchange1 = Decimal('0.00')
+                    sale.method_pay2_id = 1
+                    sale.received2 = Decimal('0.00')
+                    sale.exchange2 = Decimal('0.00')
+                    sale.status = 1
+                    
+                sale.save(using=db)
 
-            if saveCreditDetail == 1:
-                try:
-                    updateCredit = Credit.objects.get(client__id=clientId)
-                    updateCredit.last_credit_date = datejoined
-                    updateCredit.datehour = sale.datehour
-                    updateCredit.totalDebt = float(updateCredit.totalDebt) + float(total)
-                    updateCredit.save()
+                if saveCreditDetail:
+                    try:
+                        updateCredit = Credit.objects.using(db).get(client__id=clientId)
+                        updateCredit.last_credit_date = datejoined
+                        updateCredit.datehour = sale.datehour
+                        updateCredit.totalDebt = Decimal(str(updateCredit.totalDebt)) + total
+                        updateCredit.save(using=db)
+                        credit_id = updateCredit.id
+                    except Credit.DoesNotExist:
+                        newCredit = Credit()
+                        newCredit.client_id = clientId
+                        newCredit.last_credit_date = datejoined
+                        newCredit.datehour = sale.datehour
+                        newCredit.totalDebt = total
+                        newCredit.save(using=db)
+                        credit_id = newCredit.id
 
                     newDet = DetCredit()
                     newDet.last_credit_date = datejoined
                     newDet.datehour = sale.datehour
-                    newDet.credit_id = updateCredit.id
+                    newDet.credit_id = credit_id
                     newDet.method_pay_id = 1
                     newDet.sale_id = sale.id
                     newDet.operation = '+'
-                    newDet.quantity = float(total)
-                    newDet.description = 'Factura # ' + str(sale.invoice_number)
-                    newDet.save()
-                except:
-                    newCredit = Credit()
-                    newCredit.client_id = clientId
-                    newCredit.last_credit_date = datejoined
-                    newCredit.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
-                    newCredit.totalDebt = total
-                    newCredit.save()
+                    newDet.quantity = total
+                    newDet.quantitybs = total * dl
+                    newDet.description = f"Factura # {sale.invoice_number}"
+                    newDet.save(using=db)
 
-                    newDet = DetCredit()
-                    newDet.last_credit_date = datejoined
-                    newDet.datehour = sale.datehour
-                    newDet.credit_id = newCredit.id
-                    newDet.method_pay_id = 1
-                    newDet.sale_id = sale.id
-                    newDet.operation = '+'
-                    newDet.quantity = float(total)
-                    newDet.quantitybs = total * float(dl)
-                    newDet.description = 'Factura # ' + str(sale.invoice_number)
-                    newDet.save()
+                for i in sales['products']:
+                    pw = Product.objects.using(db).select_for_update().get(pk=i['id'])
+                    
+                    stock_actual = Decimal(str(pw.quantity))
+                    cantidad_vendida = Decimal(str(i['quantity']))
 
-            for i in sales['products']:
-                det = DetSale()
-                pw = Product.objects.using(db).get(pk=i['id'])
-                pw.quantity = float(pw.quantity) - float(i['quantity'])
+                    if stock_actual < cantidad_vendida:
+                        stock_formateado = int(stock_actual) if stock_actual % 1 == 0 else float(stock_actual)
+                        cant_formateada = int(cantidad_vendida) if cantidad_vendida % 1 == 0 else float(cantidad_vendida)        
+                        raise Exception(f"Stock insuficiente para '{pw.category.name} - {pw.product} ({pw.type_product.name})'. Disponible: {stock_formateado}, Solicitado: {cant_formateada}")
+                    
+                    pw.quantity = stock_actual - cantidad_vendida
+                    pw.save(using=db)
 
-                det.sale_id = sale.id
-                det.prod_id = i['id']
-                det.quantity = float(i['quantity'])
-                det.price = pw.price_dl
-                det.total = float(pw.price_dl) * float(i['quantity'])
-                det.rate = float(dl)
-                pw.save(using=db)
-                det.save(using=db)
-        data = {
-            'id': sale.id,
-            # 'location': 'http://192.168.88.249/panel/sale/add/'
-        }
+                    det = DetSale()
+                    det.sale_id = sale.id
+                    det.prod_id = i['id']
+                    det.quantity = cantidad_vendida
+                    det.price = Decimal(str(pw.price_dl))
+                    det.total = Decimal(str(pw.price_dl)) * cantidad_vendida
+                    det.rate = dl
+                    det.save(using=db)
+                    
+            data = { 'id': sale.id }
+
+        except Exception as e:
+            data = {
+                'error': str(e)
+            }
+
         return data
+
+    # def addSale(self, db, requestPOST, requestUser):
+    #     data = []
+    #     datejoined = date.today().strftime('%Y-%m-%d')
+    #     dolar = Dolar.objects.using(db).get(pk=1)
+    #     dl = float(dolar.dolar)
+
+    #     clientId = int(requestPOST['searchClient'])
+    #     sales = json.loads(requestPOST['sales'])
+
+    #     # Validate pay
+    #     saveCreditDetail = 0
+    #     with transaction.atomic():
+    #         sale = Sale()
+    #         dateHour = timezone.localtime(timezone.now())
+    #         total = float(sales['total']) - float(sales['discount'])
+    #         sale.user = requestUser.username
+    #         sale.datejoined = datejoined
+    #         sale.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
+    #         sale.client_id = clientId
+    #         sale.subtotal = float(sales['total'])
+    #         sale.discount = float(sales['discount'])
+    #         sale.total = total
+    #         sale.totalBs = total * float(dl)
+    #         type_sale = requestPOST['inlineRadioOptions']
+    #         if type_sale == 'option1':
+    #             sale.type_sale = 'Al Contado'
+    #             sale.method_pay_id = requestPOST['method_pay']
+    #             sale.received = float(requestPOST['received'])
+    #             sale.method_pay1_id = requestPOST['method_pay1']
+    #             sale.received1 = float(requestPOST['received1'])
+    #             sale.method_pay2_id = requestPOST['method_pay2']
+    #             sale.received2 = float(requestPOST['received2'])
+    #         elif type_sale == 'option2':
+    #             saveCreditDetail = 1
+    #             sale.type_sale = 'Crédito'
+    #             sale.method_pay_id = 1
+    #             sale.received = '0.00'
+    #             sale.exchange = '0.00'
+    #             sale.method_pay1_id = 1
+    #             sale.received1 = '0.00'
+    #             sale.exchange1 = '0.00'
+    #             sale.method_pay2_id = 1
+    #             sale.received2 = '0.00'
+    #             sale.exchange2 = '0.00'
+    #             sale.status = 1
+    #         sale.rate = float(dl)
+    #         sale.description = requestPOST['description']
+    #         sale.invoice_number = self.get_lastet_invoice(db)
+    #         sale.save(using=db)
+
+    #         if saveCreditDetail == 1:
+    #             try:
+    #                 updateCredit = Credit.objects.get(client__id=clientId)
+    #                 updateCredit.last_credit_date = datejoined
+    #                 updateCredit.datehour = sale.datehour
+    #                 updateCredit.totalDebt = float(updateCredit.totalDebt) + float(total)
+    #                 updateCredit.save()
+
+    #                 newDet = DetCredit()
+    #                 newDet.last_credit_date = datejoined
+    #                 newDet.datehour = sale.datehour
+    #                 newDet.credit_id = updateCredit.id
+    #                 newDet.method_pay_id = 1
+    #                 newDet.sale_id = sale.id
+    #                 newDet.operation = '+'
+    #                 newDet.quantity = float(total)
+    #                 newDet.description = 'Factura # ' + str(sale.invoice_number)
+    #                 newDet.save()
+    #             except:
+    #                 newCredit = Credit()
+    #                 newCredit.client_id = clientId
+    #                 newCredit.last_credit_date = datejoined
+    #                 newCredit.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
+    #                 newCredit.totalDebt = total
+    #                 newCredit.save()
+
+    #                 newDet = DetCredit()
+    #                 newDet.last_credit_date = datejoined
+    #                 newDet.datehour = sale.datehour
+    #                 newDet.credit_id = newCredit.id
+    #                 newDet.method_pay_id = 1
+    #                 newDet.sale_id = sale.id
+    #                 newDet.operation = '+'
+    #                 newDet.quantity = float(total)
+    #                 newDet.quantitybs = total * float(dl)
+    #                 newDet.description = 'Factura # ' + str(sale.invoice_number)
+    #                 newDet.save()
+
+    #         for i in sales['products']:
+    #             det = DetSale()
+    #             pw = Product.objects.using(db).get(pk=i['id'])
+    #             pw.quantity = float(pw.quantity) - float(i['quantity'])
+
+    #             det.sale_id = sale.id
+    #             det.prod_id = i['id']
+    #             det.quantity = float(i['quantity'])
+    #             det.price = pw.price_dl
+    #             det.total = float(pw.price_dl) * float(i['quantity'])
+    #             det.rate = float(dl)
+    #             pw.save(using=db)
+    #             det.save(using=db)
+    #     data = {
+    #         'id': sale.id,
+    #         # 'location': 'http://192.168.88.249/panel/sale/add/'
+    #     }
+    #     return data
 
     def get_methods_pay(self):
         data = []
@@ -418,7 +538,7 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
         context['methods'] = self.get_methods_pay()
         context['invoice_number'] = self.get_lastet_invoice_number()
         context['action'] = 'add'
-        # context['dl'] = get_dollar()
+        context['dl1'] = get_dollar()
         context['det'] = []
         context['cli'] = []
         context['data'] = getCompanyData()

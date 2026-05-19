@@ -3,7 +3,7 @@ var tbCredit;
 var sede = localStorage.getItem('sede');
 var sede_id = 0;
 
-function getData(start, end, all) {
+function getData(start, end, all, include) {
   tableSale = $('#data').DataTable({
     ordering: true,
     order: [[1, 'desc']],
@@ -24,6 +24,7 @@ function getData(start, end, all) {
         start: start,
         end: end,
         all: all,
+        include: include,
       },
       dataSrc: '',
     },
@@ -211,7 +212,7 @@ $(function () {
   $('#input-date, #input-date-2').on('change', function () {
     let start = $('input[name="input-date"]').val();
     let end = $('input[name="input-date-2"]').val();
-    getData(start, end, gettAll());
+    getData(start, end, gettAll(), includeAll());
   });
 
   $('#id_method_pay, #totalPayment').on('change keyup', function () {
@@ -221,7 +222,7 @@ $(function () {
   let start = $('input[name="input-date"]').val();
   let end = $('input[name="input-date-2"]').val();
 
-  getData(start, end, gettAll());
+  getData(start, end, gettAll(), includeAll());
 });
 
 $(function () {
@@ -296,7 +297,18 @@ $(function () {
 function searchAll(){
   let start = $('input[name="input-date"]').val();
   let end = $('input[name="input-date-2"]').val();
-  getData(start, end, gettAll());
+  getData(start, end, gettAll(), includeAll());
+}
+
+function includeAll() {
+  let result = 0;
+  const checkbox = document.getElementById('includeAll');
+
+  if (checkbox && checkbox.checked) { 
+    result = 1;
+  }
+  
+  return result;
 }
 
 function gettAll() {
@@ -305,6 +317,9 @@ function gettAll() {
 
   if (checkbox && checkbox.checked) { 
     result = 1;
+    document.getElementById('groupDate').style.setProperty("display", "none", "important");
+  } else {
+    document.getElementById('groupDate').style.display = "block";
   }
   
   return result;
@@ -357,6 +372,7 @@ $(function () {
         $('#modalPayment').modal('hide');
         alertSweetSuccess('Abono registrado');
         setTimeout(tableSale.ajax.reload(), 5000);
+        btnSubmit.prop('disabled', false).text('Registrar Venta');
       },
       function (error) {
         btnSubmit.prop('disabled', false).text('Registrar Venta');

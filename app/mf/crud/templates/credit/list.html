@@ -14,10 +14,16 @@
     <div class="form-check mr-4 align-self-center">
         <input class="form-check-input d-align" type="checkbox" value="" id="getAll" onchange="searchAll()">
         <label class="form-check-label" for="getAll">
-            Mostrar todos
+            Todas las fechas
         </label>
     </div>
-    <div class="d-flex flex-nowrap">
+    <div class="form-check mr-4 align-self-center">
+        <input class="form-check-input d-align" type="checkbox" value="" id="includeAll" onchange="searchAll()">
+        <label class="form-check-label" for="includeAll">
+            Incluir pagados
+        </label>
+    </div>
+    <div class="d-flex flex-nowrap" id="groupDate">
         <input type="date" class="form-control" name="input-date" id="input-date">
         <input type="date" class="form-control" name="input-date-2" id="input-date-2">
     </div>
@@ -74,6 +80,10 @@
                             <span>Total Bs:</span>
                             <input type="text" class="form-control" name="pendingBs" value="" disabled>
                         </div>
+                    </div>
+                    <div class="form-group flex-grow-1">
+                        <span>Fecha:</span>
+                            <input type="date" class="form-control" name="datejoined" id="datejoined" required>
                     </div>
                     <div class="d-flex flex-row flex-nowrap">
                         <div class="form-group w-50">

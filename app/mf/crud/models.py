@@ -160,6 +160,7 @@ class Product(models.Model):
     price_bs = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Precio bolivares")
     gain = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Ganancia")
     quantity = models.DecimalField(default=0, max_digits=30, decimal_places=3, verbose_name="Cantidad")
+    status = models.IntegerField(default=1)
 
     def __str__(self):
         return '{}.{}.{}'.format(self.brand, self.product, self.type_product.name)
