@@ -66,7 +66,7 @@ var sales = {
           class: 'text-left tdLarger',
           orderable: false,
           render: function (data, type, row, meta) {
-            let product = `<span class="pointer-1" data-title="${row.price_dl}$"> ${row.category.name} - ${row.brand} ${row.product} (${row.type_product.name})</span>`;
+            let product = `<span class="pointer-1 product-name" data-title="${row.price_dl}$"> ${row.category.name} - ${row.brand} ${row.product} (${row.type_product.name})</span>`;
             return product;
           },
         },
@@ -94,6 +94,7 @@ var sales = {
       rowCallback(row, data, displayNum, displayIndex, dataIndex) {
         const $input = $(row).find('input[name="quantity"]');
         const maxVal = parseFloat(data.initial) || 0; 
+        const product = $(row).find('span.product-name').text().trim();
         
         const calculatedStep = (maxVal % 1 !== 0) ? 0.001 : 1;
 
@@ -108,8 +109,21 @@ var sales = {
         }).on('change touchspin.on.stopspin blur', function () {
             let val = parseFloat($(this).val());
             if (isNaN(val)) val = 0;
-            if (val < 0) val = 0;
 
+            if (val > maxVal) {
+              Swal.fire({
+                  position: 'center',
+                  icon: 'warning',
+                  title: 'Stock Limitado',
+                  text: `La cantidad solicitada para "${product}" supera el inventario. Se ha ajustado automáticamente al máximo disponible: ${maxVal}`,
+                  confirmButtonText: 'Entendido',
+                  confirmButtonColor: '#3085d6',
+                  allowOutsideClick: false,
+                  allowEscapeKey: false
+              });
+            }
+
+            if (val < 0) val = 0;
             if (val % 1 !== 0) {
                 $(this).val(val.toFixed(3));
             } else {
