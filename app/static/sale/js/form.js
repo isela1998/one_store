@@ -93,28 +93,33 @@ var sales = {
       ],
       rowCallback(row, data, displayNum, displayIndex, dataIndex) {
         const $input = $(row).find('input[name="quantity"]');
+        const maxVal = parseFloat(data.initial) || 0; 
+        
+        const calculatedStep = (maxVal % 1 !== 0) ? 0.001 : 1;
 
         $input.TouchSpin({
             min: 0.000,
-            max: data.initial,
-            step: 1,
+            max: maxVal,
+            step: calculatedStep,
             forcestepdivisibility: 'none',
             decimals: 3,
             boostat: 5,
             maxboostedstep: 10
         }).on('change touchspin.on.stopspin blur', function () {
-          let val = parseFloat($(this).val());
-          const max = parseFloat(data.initial);
+            let val = parseFloat($(this).val());
+            if (isNaN(val)) val = 0;
+            if (val < 0) val = 0;
 
-          if (val > max) val = max;
-          if (val <= 0 || isNaN(val)) {
-              val = 1;
-          }
-          $(this).val(val);
+            if (val % 1 !== 0) {
+                $(this).val(val.toFixed(3));
+            } else {
+                $(this).val(parseFloat(val)); 
+            }
+
         });
 
         $input.trigger('change');
-      },
+    },
       initComplete: function (settings, json) {},
     });
   },
@@ -133,8 +138,12 @@ $(function () {
         sales.list();
       })
       .on('change keyup', 'input[name="quantity"]', function (e) {
-        let quantity = parseFloat($(this).val());
         let tr = tableProducts.cell($(this).closest('td, li')).index();
+      
+        let quantity = parseFloat($(this).val());
+        if (isNaN(quantity)) {
+            quantity = 0;
+        }
 
         sales.items.products[tr.row].quantity = quantity;
         sales.calculate_invoice();
@@ -539,7 +548,7 @@ $(function () {
         setTimeout(function () {
             window.location.reload();
             location.href = '#top';
-        }, 3000);
+        }, 1500);
         location.href = '#top';
       },
       function (error) {
