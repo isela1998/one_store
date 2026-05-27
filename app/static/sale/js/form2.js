@@ -4,87 +4,6 @@ var sede = localStorage.getItem('sede');
 var sede_id = 0;
 var client;
 
-function validatePay() {
-    let pay1 = 0;
-    let pay2 = 0;
-    let pay3 = 0;
-
-    let received1 = parseFloat($('input[name="received"]').val()) || 0;
-    let received2 = parseFloat($('input[name="received1"]').val()) || 0;
-    let received3 = parseFloat($('input[name="received2"]').val()) || 0;
-    let totalReceived = 0;
-
-    let option1 = $('select[name="method_pay"] option:selected').text();
-    let option2 = $('select[name="method_pay1"] option:selected').text();
-    let option3 = $('select[name="method_pay2"] option:selected').text();
-
-    if (option1.includes('$')) {
-      pay1 = received1;
-    } else if (option1.includes('Bs')) {
-      pay1 = received1 / sales.items.dolar1;
-    }
-
-    if (option2.includes('$')) {
-      pay2 = received2;
-    } else if (option2.includes('Bs')) {
-      pay2 = received2 / sales.items.dolar1;
-    }
-
-    if (option3.includes('$')) {
-      pay3 = received3;
-    } else if (option3.includes('Bs')) {
-      pay3 = received3 / sales.items.dolar1;
-    }
-
-    totalReceived = pay1 + pay2 + pay3;
-    return totalReceived;
-}
-
-function getDifference() {
-    let differenceDl = 0;
-    let differenceBs = 0;
-    
-    let totalInvoice = sales.items.total;
-    let totalReceived = validatePay();
-
-    differenceDl = totalInvoice - totalReceived;
-    differenceBs = differenceDl * sales.items.dolar1;
-
-    $('input[name="totalDlR"]').val((Number(differenceDl) || 0).toFixed(2));
-    $('input[name="totalBsR"]').val((Number(differenceBs) || 0).toFixed(2));
-
-    if (differenceDl.toFixed(2) == 0 || differenceDl < 0) return true;
-    else return false;
-}
-
-function ejecutarEnvioVenta(formElement, btnSubmit) {
-    btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
-    $('input[name="request"]').val(1);
-    
-    $('#id_received, #id_received1, #id_received2').prop('disabled', false);
-
-    let parameters = new FormData(formElement);
-    parameters.append('sales', JSON.stringify(sales.items));
-    parameters.append('action', 'add');
-    parameters.append('sede', sede);
-
-    submit_with_ajax_with_error(
-      window.location.pathname,
-      parameters,
-      function (response) {
-        alertSweetSuccess('Venta registrada con Éxito');
-        setTimeout(function () {
-            window.location.reload();
-            location.href = '#top';
-        }, 1500);
-        location.href = '#top';
-      },
-      function (error) {
-        btnSubmit.prop('disabled', false).text('Registrar Venta');
-      }
-    );
-}
-
 // Process for calculating invoice totals
 var sales = {
   items: {
@@ -98,25 +17,21 @@ var sales = {
   calculate_invoice: function () {
     let subtotal = 0.0;
     let subtotalBs = 0.0;
-    
-    // Calcular la sumatoria base de productos en Bs
     $.each(this.items.products, function (pos, dict) {
       dict.subtotal = dict.quantity * parseFloat(dict.price_bs);
       subtotal += dict.subtotal;
     });
 
-    let baseTotalDl = subtotal / this.items.dolar1;
-
-    let inputDiscount = parseFloat($('input[name="discount"]').val()) || 0.0;
-    this.items.discount = inputDiscount;
-
-    this.items.total = baseTotalDl - this.items.discount;
-    if (this.items.total < 0) this.items.total = 0.0;
-
+    this.items.total = subtotal / this.items.dolar1;
     subtotalBs = this.items.total * this.items.dolar1;
 
+    // Para los inputs de dólares
     $('input[name="quantity_dolars"]').val((Number(this.items.total) || 0).toFixed(2));
+    $('input[name="totalDlR"]').val((Number(this.items.total) || 0).toFixed(2));
+
+    // Para los inputs de bolívares
     $('input[name="total"]').val((Number(subtotalBs) || 0).toFixed(2));
+    $('input[name="totalBsR"]').val((Number(subtotalBs) || 0).toFixed(2));
   },
   add: function (item) {
     this.items.products.push(item);
@@ -124,11 +39,6 @@ var sales = {
   },
   list: function () {
     this.calculate_invoice();
-    
-    if (typeof getDifference === 'function') {
-        getDifference();
-    };
-
     tableProducts = $('#tableProducts').DataTable({
       responsive: false,
       autoWidth: false,
@@ -156,7 +66,7 @@ var sales = {
           class: 'text-left tdLarger',
           orderable: false,
           render: function (data, type, row, meta) {
-            return `<span class="pointer-1 product-name" data-title="Stock: ${row.initial}"> ${row.category.name} - ${row.brand} ${row.product} (${row.type_product.name})</span>`;
+            return `<span class="pointer-1 product-name" data-title="${row.price_dl}$"> ${row.category.name} - ${row.brand} ${row.product} (${row.type_product.name})</span>`;
           },
         },
         {
@@ -184,16 +94,7 @@ var sales = {
         const $input = $(row).find('input[name="quantity"]');
         const maxVal = parseFloat(data.initial) || 0; 
         const product = $(row).find('span.product-name').text().trim();
-
-        const tieneDecimales = (maxVal % 1 !== 0);
-        const calculatedStep = tieneDecimales ? 0.001 : 1;
-
-        let cantidadActual = parseFloat(data.quantity) || 1;
-        if (cantidadActual % 1 === 0) {
-            $input.val(parseInt(cantidadActual));
-        } else {
-            $input.val(cantidadActual.toFixed(3));
-        }
+        const calculatedStep = (maxVal % 1 !== 0) ? 0.001 : 1;
 
         $input.TouchSpin({
             min: 0.000,
@@ -226,17 +127,14 @@ var sales = {
 
             if (val < 0) val = 0;
 
-            if (e.type !== 'keyup') {
-                if (val % 1 !== 0) {
-                    $(this).val(val.toFixed(3));
-                } else {
-                    $(this).val(parseInt(val)); // Si es entero, limpia los .000 para que se vea impecable
-                }
+            if (val % 1 !== 0) {
+                $(this).val(val.toFixed(3));
+            } else {
+                $(this).val(parseFloat(val)); 
             }
 
             data.quantity = val; 
             data.subtotal = data.quantity * parseFloat(data.price_bs);
-            
             sales.calculate_invoice();
 
             let formatoSubtotal = (Number(data.subtotal) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -285,6 +183,11 @@ $(function () {
 
     $('.btnAdd').on('click', function () {
       $('form')[2].reset();
+      // modal_title.find('#span_modal_title').html('Agregar Producto');
+      // modal_title
+      //   .find('#i_modal_title')
+      //   .removeClass()
+      //   .addClass('fas text-primary fa-plus');
       document.getElementById('btn_submit').innerHTML =
         '<i class="fas fa-save"></i> Guardar';
       $('input[name="actionProducto"]').val('add');
@@ -381,24 +284,24 @@ $(function () {
       }
     });
 
-    $('input[name="discount"]').on('change keyup', function () {
+    $('input[name="discount"]')
+      .on('change keyup', function () {
         sales.items.discount = parseFloat(this.value);
         sales.calculate_invoice();
         getDifference();
-    })
-    .on('blur', function () {
+      })
+      .on('blur', function () {
         if (this.value == '') this.value = 0;
         sales.items.discount = parseFloat(this.value);
         sales.calculate_invoice();
         getDifference();
-    })
-    .on('keydown', function (e) {
+      }).on('keydown', function (e) {
         var keyCode= e.which;
         if (keyCode == 13){
           e.preventDefault();
           return false;
         }
-    });
+      });
 
     document.getElementById('searchClient').style.fontSize = 'large';
 
@@ -423,13 +326,12 @@ $(function () {
           type: 'POST',
           url: window.location.pathname,
           data: function (params) {
-            let textoBusqueda = params.term ? params.term.trim() : '';
-            
-            return {
-              term: textoBusqueda,
+            let queryParameters = {
+              term: params.term,
               sede: sede,
               action: 'search_products',
             };
+            return queryParameters;
           },
           processResults: function (data) {
             return {
@@ -438,13 +340,11 @@ $(function () {
           },
         },
         placeholder: 'Búsqueda...',
-        minimumInputLength: 1,
+        minimunInputLength: 1,
       })
       .on('select2:select', function (e) {
         let result;
         let data = e.params.data;
-
-        if (!data.id) return false;
 
         data.quantity = 1;
         data.subtotal = 0.0;
@@ -496,6 +396,60 @@ $(function () {
         $('select[name="searchClient"]').val(data.id);
       });
   });
+
+  // Validate totals
+  function validatePay() {
+    let pay1 = 0;
+    let pay2 = 0;
+    let pay3 = 0;
+    let received1 = parseFloat($('input[name="received"]').val());
+    let received2 = parseFloat($('input[name="received1"]').val());
+    let received3 = parseFloat($('input[name="received2"]').val());
+    let totalReceived = 0;
+
+    let option1 = $('select[name="method_pay"] option:selected').text();
+    let option2 = $('select[name="method_pay1"] option:selected').text();
+    let option3 = $('select[name="method_pay2"] option:selected').text();
+
+    if (option1.includes('$')) {
+      pay1 = received1;
+    } else if (option1.includes('Bs')) {
+      pay1 = received1 / sales.items.dolar1;
+    }
+
+    if (option2.includes('$')) {
+      pay2 = received2;
+    } else if (option2.includes('Bs')) {
+      pay2 = received2 / sales.items.dolar1;
+    }
+
+    if (option3.includes('$')) {
+      pay3 = received3;
+    } else if (option3.includes('Bs')) {
+      pay3 = received3 / sales.items.dolar1;
+    }
+
+    totalReceived = pay1 + pay2 + pay3;
+    return totalReceived;
+  }
+
+  function getDifference() {
+    let differenceDl = 0;
+    let differenceBs = 0;
+    let totalInvoice = sales.items.total;
+    let discount = sales.items.discount;
+    let totalReceived = validatePay();
+    let totalRWDiscount = totalReceived + discount;
+
+    differenceDl = totalInvoice - totalRWDiscount;
+    differenceBs = differenceDl * sales.items.dolar1;
+
+    $('input[name="totalDlR"]').val((Number(differenceDl) || 0).toFixed(2));
+    $('input[name="totalBsR"]').val((Number(differenceBs) || 0).toFixed(2));
+
+    if (differenceDl.toFixed(2) == 0 || differenceDl < 0) return true;
+    else return false;
+  }
 
   // Send data
   $('#formSale').on('submit', function (e) {
@@ -580,6 +534,34 @@ $(function () {
 
     ejecutarEnvioVenta(this, btnSubmit);
   });
+
+  function ejecutarEnvioVenta(formElement, btnSubmit) {
+    btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
+    $('input[name="request"]').val(1);
+    
+    $('#id_received, #id_received1, #id_received2').prop('disabled', false);
+
+    let parameters = new FormData(formElement);
+    parameters.append('sales', JSON.stringify(sales.items));
+    parameters.append('action', 'add');
+    parameters.append('sede', sede);
+
+    submit_with_ajax_with_error(
+      window.location.pathname,
+      parameters,
+      function (response) {
+        alertSweetSuccess('Venta registrada con Éxito');
+        setTimeout(function () {
+            window.location.reload();
+            location.href = '#top';
+        }, 1500);
+        location.href = '#top';
+      },
+      function (error) {
+        btnSubmit.prop('disabled', false).text('Registrar Venta');
+      }
+    );
+  }
 
   $('#budget').on('click', function (e) {
     e.preventDefault();
@@ -667,20 +649,15 @@ function cash_payment() {
   document.querySelectorAll('#box1,#box2,#box4').forEach(function (box) {
     box.style.display = 'block';
   });
-
-  sales.calculate_invoice();
-  getDifference();
 }
 
 function credit_payment() {
   $('select[name="method_pay"]').val(1);
   $('select[name="method_pay1"]').val(1);
   $('select[name="method_pay2"]').val(1);
-  
-  $('input[name="received"]').val('0.00');
-  $('input[name="received1"]').val('0.00');
-  $('input[name="received2"]').val('0.00');
-  
+  $('input[name="received"]').val(0);
+  $('input[name="received1"]').val(0);
+  $('input[name="received2"]').val(0);
   document.getElementById('id_received').disabled = true;
   document.getElementById('id_received1').disabled = true;
   document.getElementById('id_received2').disabled = true;
@@ -688,13 +665,9 @@ function credit_payment() {
   document.querySelectorAll('#box1,#box2').forEach(function (box) {
     box.style.display = 'none';
   });
-
   document.querySelectorAll('#box4').forEach(function (box) {
     box.style.display = 'block';
   });
-
-  sales.calculate_invoice();
-  getDifference(); 
 }
 
 function selectThis(input) {

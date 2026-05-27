@@ -120,7 +120,11 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
             action = request.POST['action']
             if action == 'search_products':
                 data = []
-                term = request.POST['term']
+
+                term = request.POST.get('term', '').strip()
+                if not term:
+                    return JsonResponse(data, safe=False)
+
                 code = Product.objects.using(db).filter(code__icontains=term).exclude(quantity__lte=0).exclude(status=0)[0:10]
                 products = Product.objects.using(db).filter(product__icontains=term).exclude(quantity__lte=0).exclude(status=0)[0:10]
                 brand = Product.objects.using(db).filter(brand__icontains=term).exclude(quantity__lte=0).exclude(status=0)[0:10]
@@ -354,9 +358,12 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
 
                 for i in sales['products']:
                     pw = Product.objects.using(db).select_for_update().get(pk=i['id'])
-                    
-                    stock_actual = Decimal(str(pw.quantity))
                     cantidad_vendida = Decimal(str(i['quantity']))
+
+                    if cantidad_vendida <= 0:
+                        raise Exception(f"Se detectó una cantidad inválida ({cantidad_vendida}) para el producto '{pw.category.name} - {pw.product} ({pw.type_product.name})'. Por favor, verifique e intente de nuevo.")
+
+                    stock_actual = Decimal(str(pw.quantity))
 
                     if stock_actual < cantidad_vendida:
                         stock_formateado = int(stock_actual) if stock_actual % 1 == 0 else float(stock_actual)
