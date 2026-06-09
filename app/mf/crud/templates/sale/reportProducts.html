@@ -47,6 +47,11 @@
     .text-center {
         text-align: center;
     }
+
+    #invoice2 tbody tr td {
+        border-bottom: 1px solid #afa4a4;
+        padding: 1px 0px;
+    }
 </style>
 
 <body>
@@ -81,9 +86,13 @@
     <table id="invoice">
         <thead>
             <tr>
-                <th style="font-size: 10px; width: 20%;">Código</th>
-                <th style="font-size: 10px;">Producto</th>
-                <th style="font-size: 10px; width: 20%; text-align: center;">Cantidad</th>
+                <th style="font-size: 10px; width: 15%;">Código</th>
+                <th style="font-size: 10px; width: 50%;">Producto</th>
+                <th style="font-size: 10px; width: 5%;">Costo</th>
+                <th style="font-size: 10px; width: 5%;">P.V.</th>
+                <th style="font-size: 10px; width: 5%; text-align: center;">Cant.</th>
+                <th style="font-size: 10px; width: 10%; text-align: center;">Venta</th>
+                <th style="font-size: 10px; width: 10%; text-align: center;">Ganancia</th>
             </tr>
         </thead>
         <tbody>
@@ -91,13 +100,21 @@
             <tr style="border-bottom: 1px solid black; padding-top: 4px;">
                 <td style="font-size: 9px;">{{ d.code }}</td>
                 <td style="font-size: 9px;">{{ d.prod }}</td>
+                <td style="font-size: 9px;">{{ d.cost }}</td>
+                <td style="font-size: 9px;">{{ d.price }}</td>
                 <td style="font-size: 9px; text-align: center;">{{ d.quantity|floatformat:2 }} </td>
+                <td style="font-size: 9px; text-align: center;">{{ d.total_dl|floatformat:2 }} </td>
+                <td style="font-size: 9px; text-align: center;">{{ d.gain|floatformat:2 }} </td>
             </tr>
             {% endfor %}
             <tr style="border-top: 1px solid black; padding-top: 4px;">
                 <td style="font-size: 10px;"></td>
-                <td style="font-size: 10px; text-align: right;">TOTAL</td>
-                <td style="font-size: 10px; text-align: center;">{{ totalProducts }}</td>
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px;"></td>
+                <td style="font-size: 10px; text-align: right;">TOTALES</td>
+                <td style="font-size: 10px; text-align: center;">{{ totalPSales|floatformat:2 }} </td>
+                <td style="font-size: 10px; text-align: center;">{{ totalProducts|floatformat:2 }}$</td>
             </tr>
         </tbody>
     </table>

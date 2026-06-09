@@ -187,32 +187,37 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
                 datejoined = date.today().strftime('%Y-%m-%d')
                 dolar = Dolar.objects.using(db).get(pk=1)
                 dl = float(dolar.dolar)
+                
+                try:
+                    with transaction.atomic():
+                        sales = json.loads(request.POST['sales'])
+                        sale = Budget()
+                        sale.user = request.user.username
+                        sale.datejoined = datejoined
+                        sale.client_id = int(request.POST['searchClient'])
+                        sale.subtotal = float(request.POST['quantity_dolars']) + float(sales['discount'])
+                        sale.discount = float(sales['discount'])
+                        sale.total = float(request.POST['quantity_dolars'])
+                        sale.description = request.POST['description']
+                        sale.rate = float(dl)
+                        sale.budget_number = self.get_lastet_budget()
+                        sale.save(using=db)              
 
-                with transaction.atomic():
-                    sales = json.loads(request.POST['sales'])
-                    sale = Budget()
-                    sale.user = request.user.username
-                    sale.datejoined = datejoined
-                    sale.client_id = int(request.POST['searchClient'])
-                    sale.subtotal = float(request.POST['quantity_dolars'])
-                    sale.discount = float(sales['discount'])
-                    sale.total = float(request.POST['quantity_dolars']) - float(sales['discount'])
-                    sale.description = request.POST['description']
-                    sale.rate = float(dl)
-                    sale.budget_number = self.get_lastet_budget()
-                    sale.save(using=db)              
-
-                    for i in sales['products']:
-                        det = DetBudget()
-                        det.budget_id = sale.id
-                        det.prod_id = i['id']
-                        det.quantity = float(i['quantity'])
-                        det.price = float(i['price_dl'])
-                        det.total = float(i['quantity']) * float(i['price_dl'])
-                        det.rate = float(dl)
-                        det.save(using=db)
+                        for i in sales['products']:
+                            det = DetBudget()
+                            det.budget_id = sale.id
+                            det.prod_id = i['id']
+                            det.quantity = float(i['quantity'])
+                            det.price = float(i['price_dl'])
+                            det.total = float(i['quantity']) * float(i['price_dl'])
+                            det.rate = float(dl)
+                            det.save(using=db)
+                        data = {
+                            'id': sale.id,
+                        }
+                except Exception as e:
                     data = {
-                        'id': sale.id,
+                        'error': str(e)
                     }
             elif action == 'addClient':
                 cli = Client()
@@ -285,8 +290,8 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
                 sale = Sale()
                 dateHour = timezone.localtime(timezone.now())
                 
-                subtotal = Decimal(str(sales['total']))
                 discount = Decimal(str(sales['discount']))
+                subtotal = Decimal(str(sales['total'])) + discount
                 total = subtotal - discount
                 
                 sale.user = requestUser.username
@@ -598,12 +603,14 @@ class SaleInvoicePdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             sale = Sale.objects.using(db).get(pk=self.kwargs['s'])
 
             server_url = request.build_absolute_uri('/')
+            print('URL ESSS' + server_url)
+
             dataCompany = getCompanyData()
             context = {
                 'sale': sale,
                 'comp': dataCompany,
                 'url': getStaticUrl(),
-                'icon': 'http://127.0.0.1:8000/media/img/logo/logo.png',
+                'icon': server_url + 'media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')
@@ -737,6 +744,8 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                         quantity += float(s['quantity'])
                         prod = s['prod']['product'] + ' ' + s['prod']['type_product']['name']
                         price = float(s['prod']['price_dl'])
+                        cost = float(s['prod']['cost'])
+                        gain = float(s['prod']['price_dl']) - float(s['prod']['cost'])
                         totalQuantity = float(price) * float(s['quantity'])
                         total += totalQuantity
                     else:
@@ -745,7 +754,10 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     'code': i['code'],
                     'quantity': quantity,
                     'prod': prod,
+                    'cost': cost,
                     'price': price,
+                    'total_dl': price * quantity,
+                    'gain': (price - cost) * quantity,
                     'total': total,
                 }
                 data.append(product)
@@ -878,10 +890,12 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
 
             totalsByProducts = 0
             totalProducts = 0
+            totalPSales = 0
             try:
                 for i in byProducts:
                     totalsByProducts += float(i['total'])
-                    totalProducts += float(i['quantity'])
+                    totalProducts += float(i['gain'])
+                    totalPSales += float(i['total_dl'])
             except:
                 pass
 
@@ -890,7 +904,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 totalTypeSales = float(typeSales['totalCash']) + float(typeSales['totalCredit']) + float(typeSales['totalPayments'])
             except:
                 pass
-            
+
             server_url = request.build_absolute_uri('/')
             dataCompany = getCompanyData()
             context = {
@@ -908,9 +922,10 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 'byProducts': byProducts,
                 'totalsByProducts': totalsByProducts,
                 'totalProducts': totalProducts,
+                'totalPSales': totalPSales,
                 'comp': dataCompany,
                 'url': getStaticUrl(),
-                'icon': 'http://127.0.0.1:8000/media/img/logo/logo.png',
+                'icon': server_url + '/media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')

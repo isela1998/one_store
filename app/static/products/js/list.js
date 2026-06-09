@@ -10,6 +10,7 @@ function getData() {
   tbProduct = $('#data').DataTable({
     ordering: true,
     searching: true,
+    pageLength: 10,
     paging: true,
     info: false,
     pagingType: 'simple_numbers',
@@ -67,7 +68,7 @@ function getData() {
       {
         targets: [-2, -3, -4],
         class: 'text-center',
-        orderable: false,
+        orderable: true,
         render: $.fn.dataTable.render.number('.', ',', 2),
       },
       {
@@ -194,7 +195,7 @@ $(function () {
     let parameters = new FormData(this);
     submit_with_ajax(window.location.pathname, parameters, function () {
       $('#modalProduct').modal('hide');
-      alertSweetSuccess('Listado de Productos actualizado');
+      // alertSweetSuccess('Listado de Productos actualizado');
       setTimeout(tbProduct.ajax.reload(), 5000);
     });
   });

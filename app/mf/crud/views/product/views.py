@@ -231,7 +231,7 @@ class InventaryPdfView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView
                 'comp': dataCompany,
                 'totalInventary': int(totalInventary),
                 'url': getStaticUrl(),
-                'icon': 'http://127.0.0.1:8000/media/img/logo/logo.png',
+                'icon': server_url + 'media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')

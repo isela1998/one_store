@@ -10,6 +10,7 @@ function getData(start, end, all, include) {
     searching: true,
     paging: true,
     info: false,
+    pageLength: 20,
     pagingType: 'simple_numbers',
     responsive: true,
     autoWidth: false,
