@@ -13,6 +13,7 @@ from mf.crud.views.sale.views import *
 from mf.crud.views.credit.views import *
 from mf.crud.views.debt.views import *
 from mf.crud.views.budget.views import *
+from mf.crud.views.cashMovement.views import *
 
 app_name = 'crud'
 
@@ -53,4 +54,6 @@ urlpatterns = [
     # Budget
     path('presupuesto/listado/', BudgetListView.as_view(), name='budget_list'),
     path('presupuesto/pdf/<int:s>/', BudgetInvoicePdfView.as_view(), name='budget_invoice_pdf'),
+    # Credit
+    path('movimientos/caja/', CashMovementView.as_view(), name='cashMovement'),
 ]

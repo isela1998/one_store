@@ -12,8 +12,8 @@ from decimal import Decimal
 from mf.crud.mixins import IsSuperuserMixin, ValidatePermissionMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from mf.crud.models import Product, Sale, Credit, DetCredit, Budget, DetSale, DetBudget, Client, Method_pay, Dolar
-from mf.crud.forms import SaleForm, ClientForm, MethodPayForm, ProductForm
+from mf.crud.models import Product, Sale, Credit, DetCredit, Budget, DetSale, DetBudget, Client, Method_pay, Dolar, CashMovement
+from mf.crud.forms import SaleForm, ClientForm, MethodPayForm, ProductForm, CashMovementForm
 from mf.crud.functions import *
 from django.db.models import Q
 
@@ -183,6 +183,27 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
                         data.append(item)
             elif action == 'add':
                 data = self.addSale(db, request.POST, request.user)
+            elif action == 'cashMovement':
+                dolar = Dolar.objects.using(db).get(pk=1)
+                dl = float(dolar.dolar)
+
+                method = Method_pay.objects.get(pk=request.POST['method_pay'])
+                type_symbol = method.type_symbol
+
+                c = CashMovement()
+                c.user_id = request.user.id
+                c.tipo = request.POST['tipo']
+                c.method_pay_id = method.id
+
+                if type_symbol == 'Bs':
+                    c.amount_bs = Decimal(request.POST['amount_bs'])
+                    c.amount_dl = Decimal(request.POST['amount_bs']) / Decimal(dl)  
+                else:
+                    c.amount_dl = Decimal(request.POST['amount_bs'])
+                    c.amount_bs = Decimal(request.POST['amount_bs']) * Decimal(dl)  
+
+                c.description = request.POST['description']
+                c.save()
             elif action == 'addBudget':
                 datejoined = date.today().strftime('%Y-%m-%d')
                 dolar = Dolar.objects.using(db).get(pk=1)
@@ -396,113 +417,6 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
 
         return data
 
-    # def addSale(self, db, requestPOST, requestUser):
-    #     data = []
-    #     datejoined = date.today().strftime('%Y-%m-%d')
-    #     dolar = Dolar.objects.using(db).get(pk=1)
-    #     dl = float(dolar.dolar)
-
-    #     clientId = int(requestPOST['searchClient'])
-    #     sales = json.loads(requestPOST['sales'])
-
-    #     # Validate pay
-    #     saveCreditDetail = 0
-    #     with transaction.atomic():
-    #         sale = Sale()
-    #         dateHour = timezone.localtime(timezone.now())
-    #         total = float(sales['total']) - float(sales['discount'])
-    #         sale.user = requestUser.username
-    #         sale.datejoined = datejoined
-    #         sale.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
-    #         sale.client_id = clientId
-    #         sale.subtotal = float(sales['total'])
-    #         sale.discount = float(sales['discount'])
-    #         sale.total = total
-    #         sale.totalBs = total * float(dl)
-    #         type_sale = requestPOST['inlineRadioOptions']
-    #         if type_sale == 'option1':
-    #             sale.type_sale = 'Al Contado'
-    #             sale.method_pay_id = requestPOST['method_pay']
-    #             sale.received = float(requestPOST['received'])
-    #             sale.method_pay1_id = requestPOST['method_pay1']
-    #             sale.received1 = float(requestPOST['received1'])
-    #             sale.method_pay2_id = requestPOST['method_pay2']
-    #             sale.received2 = float(requestPOST['received2'])
-    #         elif type_sale == 'option2':
-    #             saveCreditDetail = 1
-    #             sale.type_sale = 'Crédito'
-    #             sale.method_pay_id = 1
-    #             sale.received = '0.00'
-    #             sale.exchange = '0.00'
-    #             sale.method_pay1_id = 1
-    #             sale.received1 = '0.00'
-    #             sale.exchange1 = '0.00'
-    #             sale.method_pay2_id = 1
-    #             sale.received2 = '0.00'
-    #             sale.exchange2 = '0.00'
-    #             sale.status = 1
-    #         sale.rate = float(dl)
-    #         sale.description = requestPOST['description']
-    #         sale.invoice_number = self.get_lastet_invoice(db)
-    #         sale.save(using=db)
-
-    #         if saveCreditDetail == 1:
-    #             try:
-    #                 updateCredit = Credit.objects.get(client__id=clientId)
-    #                 updateCredit.last_credit_date = datejoined
-    #                 updateCredit.datehour = sale.datehour
-    #                 updateCredit.totalDebt = float(updateCredit.totalDebt) + float(total)
-    #                 updateCredit.save()
-
-    #                 newDet = DetCredit()
-    #                 newDet.last_credit_date = datejoined
-    #                 newDet.datehour = sale.datehour
-    #                 newDet.credit_id = updateCredit.id
-    #                 newDet.method_pay_id = 1
-    #                 newDet.sale_id = sale.id
-    #                 newDet.operation = '+'
-    #                 newDet.quantity = float(total)
-    #                 newDet.description = 'Factura # ' + str(sale.invoice_number)
-    #                 newDet.save()
-    #             except:
-    #                 newCredit = Credit()
-    #                 newCredit.client_id = clientId
-    #                 newCredit.last_credit_date = datejoined
-    #                 newCredit.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
-    #                 newCredit.totalDebt = total
-    #                 newCredit.save()
-
-    #                 newDet = DetCredit()
-    #                 newDet.last_credit_date = datejoined
-    #                 newDet.datehour = sale.datehour
-    #                 newDet.credit_id = newCredit.id
-    #                 newDet.method_pay_id = 1
-    #                 newDet.sale_id = sale.id
-    #                 newDet.operation = '+'
-    #                 newDet.quantity = float(total)
-    #                 newDet.quantitybs = total * float(dl)
-    #                 newDet.description = 'Factura # ' + str(sale.invoice_number)
-    #                 newDet.save()
-
-    #         for i in sales['products']:
-    #             det = DetSale()
-    #             pw = Product.objects.using(db).get(pk=i['id'])
-    #             pw.quantity = float(pw.quantity) - float(i['quantity'])
-
-    #             det.sale_id = sale.id
-    #             det.prod_id = i['id']
-    #             det.quantity = float(i['quantity'])
-    #             det.price = pw.price_dl
-    #             det.total = float(pw.price_dl) * float(i['quantity'])
-    #             det.rate = float(dl)
-    #             pw.save(using=db)
-    #             det.save(using=db)
-    #     data = {
-    #         'id': sale.id,
-    #         # 'location': 'http://192.168.88.249/panel/sale/add/'
-    #     }
-    #     return data
-
     def get_methods_pay(self):
         data = []
         for i in Method_pay.objects.all():
@@ -530,25 +444,14 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
             n_budget = f"{new_budget:0>8}"
         return n_budget
 
-    def get_lastet_invoice_number(self):
-        try:
-            order = DeliveryOrder.last()
-            last_order = order.number
-            new_order = int(last_order) + 1
-            n_order = f"{new_order:0>8}"
-        except:
-            new_order = 1
-            n_order = f"{new_order:0>8}"
-        return n_order
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'MÓDULO DE FACTURACIÓN - NUEVA VENTA'
         context['formClient'] = ClientForm()
         context['formMethod'] = MethodPayForm()
         context['formProduct'] = ProductForm()
+        context['formCashMovement'] = CashMovementForm()
         context['methods'] = self.get_methods_pay()
-        context['invoice_number'] = self.get_lastet_invoice_number()
         context['action'] = 'add'
         context['dl1'] = get_dollar()
         context['det'] = []
@@ -659,63 +562,256 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     )
             return path
 
-    def getByPayMethod(self, start, end):
+    def getByPayMethod(self, start, end, exchange_rate=1.0):
         data = []
+        grand_total_usd = 0.0 
+        
         try:
-            totalSales = 0
-            totalCredit = 0
+            # Traemos las consultas nativas (filtramos una sola vez para velocidad)
+            sales = Sale.objects.filter(datejoined__gte=start, datejoined__lte=end).exclude(status=2)
+            credits = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end).exclude(operation='+').exclude(status=0)
+            
             for m in Method_pay.objects.all().exclude(pk=1):
                 idMethodPay = m.id
                 name = m.name
-                quantity = 0
-                quantityC = 0
-                total = 0
-                total_bs = 0
-                type_total = m.type_symbol
-                sales = Sale.objects.filter(datejoined__gte=start, datejoined__lte=end).exclude(status=2)
-                credit = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end).exclude(operation='+').exclude(status=0)
+                type_total = m.type_symbol  # '$' or 'Bs'
+                
+                sales_amount = 0.0
+                payments_amount = 0.0
+                cash_in = 0.0
+                cash_out = 0.0
+                quantity = 0  # <--- Tu contador de transacciones
+                
+                # --- CONTAR Y SUMAR VENTAS ---
                 for s in sales:
-                    detail = s.toJSON()
-                    totalSales = float(totalSales) + float(detail['total'])
-                    if detail['method_pay']['id'] == idMethodPay:
-                        quantity += 1
+                    # Comparamos usando los IDs directos del ORM (Evita el fallo del toJSON)
+                    if s.method_pay_id == idMethodPay and float(s.received) > 0:
+                        sales_amount += float(s.received)
+                        quantity += 1  # Suma operación
+                        
+                    if s.method_pay1_id == idMethodPay and float(s.received1) > 0:
+                        sales_amount += float(s.received1)
+                        quantity += 1  # Suma operación
+                        
+                    if s.method_pay2_id == idMethodPay and float(s.received2) > 0:
+                        sales_amount += float(s.received2)
+                        quantity += 1  # Suma operación
+
+                # --- CONTAR Y SUMAR ABONOS DE CRÉDITOS ---
+                for c in credits:
+                    if c.method_pay_id == idMethodPay:
+                        quantity += 1  # Suma operación abono
                         if type_total == '$':
-                            total += float(detail['received'])
+                            payments_amount += float(c.quantity)
                         elif type_total == 'Bs':
-                            total_bs += float(detail['received'])
-                    if detail['method_pay1']['id'] == idMethodPay:
-                        quantity += 1
-                        if type_total == '$':
-                            total += float(detail['received1'])
-                        elif type_total == 'Bs':
-                            total_bs += float(detail['received1'])
-                    if detail['method_pay2']['id'] == idMethodPay:
-                        quantity += 1
-                        if type_total == '$':
-                            total += float(detail['received2'])
-                        elif type_total == 'Bs':
-                            total_bs += float(detail['received2'])
-                for c in credit:
-                    detailC = c.toJSON()
-                    totalCredit = float(totalCredit) + float(detailC['quantity'])
-                    if detailC['method_pay']['id'] == idMethodPay:
-                        quantity += 1
-                        if type_total == '$':
-                            total += float(detailC['quantity'])
-                        elif type_total == 'Bs':
-                            total_bs += float(detailC['quantitybs'])
+                            payments_amount += float(c.quantitybs)
+
+                # --- CONTAR Y SUMAR MOVIMIENTOS DE CAJA ---
+                movements = CashMovement.objects.filter(
+                    date_time__date__gte=start, 
+                    date_time__date__lte=end,
+                    method_pay_id=idMethodPay, 
+                    status=1
+                )
+                for mov in movements:
+                    quantity += 1  # Suma operación movimiento manual
+                    if mov.tipo == 'INGRESO':
+                        if type_total == '$': cash_in += float(mov.amount_dl)
+                        elif type_total == 'Bs': cash_in += float(mov.amount_bs)
+                    elif mov.tipo == 'EGRESO':
+                        if type_total == '$': cash_out += float(mov.amount_dl)
+                        elif type_total == 'Bs': cash_out += float(mov.amount_bs)
+
+                # --- MATEMÁTICA DE CIERRE ---
+                net_final = (sales_amount + payments_amount + cash_in) - cash_out
+                net_final = round(net_final, 2)
+                
+                if type_total == '$':
+                    grand_total_usd += net_final
+                elif type_total == 'Bs':
+                    if float(exchange_rate) > 0:
+                        grand_total_usd += round(net_final / float(exchange_rate), 2)
+
                 result = {
                     'id': idMethodPay,
                     'method': name,
-                    'quantity': quantity,
-                    'total': round(total, 2),
-                    'total_bs': round(total_bs, 2),
-                    'type_total': type_total,
+                    'currency': type_total,
+                    'quantity': quantity,  # <--- Agregado al diccionario para tu HTML
+                    'sales_amount': round(sales_amount, 2),
+                    'payments_amount': round(payments_amount, 2),
+                    'cash_in': round(cash_in, 2),
+                    'cash_out': round(cash_out, 2),
+                    'net_final': round(net_final, 2),
                 }
                 data.append(result)
+                
+        except Exception as e:
+            print(f"Error generando payment methods report: {e}")
+            pass
+
+        return data, round(grand_total_usd, 2)
+
+    def getByTypeSales(self, start, end, exchange_rate):
+        data = {}
+        cash = credit = payments = 0
+        acumulado_usd = acumulado_bs = totalCredit = totalPayments = 0.0
+
+        try:
+            allPayments = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end).exclude(operation='+').exclude(status=0)
+            allSales = Sale.objects.filter(datejoined__gte=start, datejoined__lte=end).exclude(status=2)
+            
+            for a in allSales:
+                if a.type_sale == 'Al Contado':
+                    cash += 1
+                    if a.method_pay and a.received > 0:
+                        if str(a.method_pay.type_symbol).strip() == 'Bs': acumulado_bs += float(a.received)
+                        else: acumulado_usd += float(a.received)
+                    
+                    if a.method_pay1 and a.received1 > 0:
+                        if str(a.method_pay1.type_symbol).strip() == 'Bs': acumulado_bs += float(a.received1)
+                        else: acumulado_usd += float(a.received1)
+                            
+                    if a.method_pay2 and a.received2 > 0:
+                        if str(a.method_pay2.type_symbol).strip() == 'Bs': acumulado_bs += float(a.received2)
+                        else: acumulado_usd += float(a.received2)
+                    
+                elif a.type_sale == 'Crédito':
+                    credit += 1
+                    totalCredit += float(a.total)
+                    
+            for a in allPayments:
+                payments += 1
+                totalPayments += float(a.quantity)
+                
+            totalCash = acumulado_usd + round(acumulado_bs / float(exchange_rate), 2)
+                
+            data = {
+                'cash': cash, 'credit': credit, 'payments': payments,
+                'totalCash': round(totalCash, 2),
+                'totalCredit': round(totalCredit, 2),
+                'totalPayments': round(totalPayments, 2),
+            }
+        except Exception as e:
+            print(f"Error: {e}")
+            
+        return data
+
+    def getDiscountSales(self, start, end):
+        data = []
+        try:
+            sales = Sale.objects.filter(datejoined__gte=start, datejoined__lte=end, discount__gt=0).exclude(status=2)
+            for s in sales:
+                info = {
+                    'date': s.datejoined.strftime('%d/%m/%Y'),
+                    'client': s.client.names + ' ' + s.client.ci,
+                    'invoice': '#' + s.invoice_number,
+                    'discount': float(s.discount)
+                }
+                data.append(info)
         except:
             pass
         return data
+
+    def getPayments(self, start, end):
+        data = []
+        try:
+            allPayment = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end, operation='-').exclude(status=0)
+            for p in allPayment:
+                quantity = 0
+                quantityBs = 0
+                item = p.toJSON()
+                typeSimbol = p.method_pay.type_symbol
+                credit = Credit.objects.get(pk=p.credit.id)
+                client = credit.client.names + ' ' + ' ' + credit.client.identity + '' + credit.client.ci
+                if typeSimbol == '$':
+                    quantity += float(item['quantity'])
+                elif typeSimbol == 'Bs':
+                    quantityBs += float(item['quantitybs'])
+                detail = {
+                    'date': item['last_credit_date'].strftime('%d/%m/%Y'),
+                    'client': client,
+                    'method': p.method_pay.name,
+                    'quantity': quantity,
+                    'quantityBs': quantityBs
+                }
+                data.append(detail)
+        except:
+            pass
+        return data
+    
+    def getCashMovements(self, start, end, exchange_rate):
+        data = []
+        try:
+            todos = CashMovement.objects.all().values('tipo', 'amount_bs', 'status', 'date_time__date')
+            print("LO QUE REALMENTE HAY EN CAJA:", list(todos))
+
+            allMovements = CashMovement.objects.filter(
+                date_time__date__gte=start, 
+                date_time__date__lte=end, 
+                status=1
+            ).order_by('-date_time')
+            
+            total_ingresos = 0
+            total_egresos = 0
+            total_ingresos_dl = 0
+            total_egresos_dl = 0
+            
+            for m in allMovements:
+                item = m.toJSON()
+                
+                amount = 0
+                amount_bs = float(item['amount_bs'])
+                amount_dl = float(item['amount_dl'])
+
+                method = Method_pay.objects.get(pk=m.method_pay.id)
+
+                if(method.type_symbol == 'Bs'):
+                    amount = amount_bs
+                    if(m.tipo == 'INGRESO'):
+                        total_ingresos += amount
+                    else:
+                        total_egresos += amount
+                else:
+                    amount = amount_dl
+                    if(m.tipo == 'INGRESO'):
+                        total_ingresos_dl += amount
+                    else:
+                        total_egresos_dl += amount
+                
+                hora_local = timezone.localtime(m.date_time)
+                date_formatted = hora_local.strftime('%d/%m/%Y %I:%M %p')
+                
+                detail = {
+                    'date': date_formatted,
+                    'user': m.user.username,
+                    'tipo': m.tipo,
+                    'method': m.method_pay.name,
+                    'description': m.description.capitalize(),
+                    'amount': amount,
+                    'symbol': method.type_symbol
+                }
+                data.append(detail)
+
+            if float(exchange_rate) > 0:
+                ingresos_convertidos_bs = total_ingresos / float(exchange_rate)
+                egresos_convertidos_bs = total_egresos / float(exchange_rate)
+            else:
+                ingresos_convertidos_bs = 0.0
+                egresos_convertidos_bs = 0.0
+                
+            gran_total_ingresos_usd = total_ingresos_dl + ingresos_convertidos_bs
+            gran_total_egresos_usd = total_egresos_dl + egresos_convertidos_bs
+                
+            total_neto_global_usd = gran_total_ingresos_usd - gran_total_egresos_usd
+                
+            return {
+                'movements': data,
+                'total_mov_caja': round(total_neto_global_usd, 2)
+            }
+            
+        except Exception as e:
+            print(f"Error en getCashMovementsReport: {e}")
+            return {'movements': [], 'totals': {}}
     
     def getByProducts(self, start, end):
         data = []
@@ -764,85 +860,6 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
         except:
             pass
         return data
-
-    def getByTypeSales(self, start, end):
-        data = []
-        cash = 0
-        credit = 0
-        payments = 0
-        totalCash = 0
-        totalCredit = 0
-        totalPayments = 0
-
-        try:
-            allPayments = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end).exclude(operation='+').exclude(status=0)
-            allSales = Sale.objects.filter(datejoined__gte=start, datejoined__lte=end).exclude(status=2)
-            for a in allSales:
-                i = a.toJSON()
-                if i['type_sale'] == 'Al Contado':
-                    cash = cash + 1
-                    totalCash = float(totalCash) + float(i['total'])
-                elif i['type_sale'] == 'Crédito':
-                    credit = credit + 1
-                    totalCredit += float(i['total'])
-            for a in allPayments:
-                i = a.toJSON()
-                payments = payments +1
-                totalPayments = float(totalPayments) + float(i['quantity'])
-            data = {
-                'cash': cash,
-                'credit': credit,
-                'payments': payments,
-                'totalCash': round(totalCash, 2),
-                'totalCredit': round(totalCredit, 2),
-                'totalPayments': round(totalPayments, 2),
-            }
-        except:
-            pass
-        return data
-
-    def getDiscountSales(self, start, end):
-        data = []
-        try:
-            sales = Sale.objects.filter(datejoined__gte=start, datejoined__lte=end, discount__gt=0).exclude(status=2)
-            for s in sales:
-                info = {
-                    'date': s.datejoined.strftime('%d/%m/%Y'),
-                    'client': s.client.names + ' ' + s.client.ci,
-                    'invoice': '#' + s.invoice_number,
-                    'discount': float(s.discount)
-                }
-                data.append(info)
-        except:
-            pass
-        return data
-
-    def getPayments(self, start, end):
-        data = []
-        try:
-            allPayment = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end, operation='-').exclude(status=0)
-            for p in allPayment:
-                quantity = 0
-                quantityBs = 0
-                item = p.toJSON()
-                typeSimbol = p.method_pay.type_symbol
-                credit = Credit.objects.get(pk=p.credit.id)
-                client = credit.client.names + ' ' + ' ' + credit.client.identity + '' + credit.client.ci
-                if typeSimbol == '$':
-                    quantity += float(item['quantity'])
-                elif typeSimbol == 'Bs':
-                    quantityBs += float(item['quantitybs'])
-                detail = {
-                    'date': item['last_credit_date'].strftime('%d/%m/%Y'),
-                    'client': client,
-                    'method': p.method_pay.name,
-                    'quantity': quantity,
-                    'quantityBs': quantityBs
-                }
-                data.append(detail)
-        except:
-            pass
-        return data
     
     # @pdf_decorator(pdfname='new_filename.pdf')
     def get(self, request, *args, **kwargs):
@@ -853,15 +870,21 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             discountSales = []
             payments = []
 
+            dolar = Dolar.objects.get(pk=1)
+            dl = float(dolar.dolar)
+
             if self.kwargs['type'] == 1: 
                 template = get_template('sale/reportSales.html')
-                payMethod = self.getByPayMethod(self.kwargs['start'], self.kwargs['end'])
-                typeSales = self.getByTypeSales(self.kwargs['start'], self.kwargs['end'])
+                payMethod, grand_total = self.getByPayMethod(self.kwargs['start'], self.kwargs['end'], exchange_rate=dl)
+                typeSales = self.getByTypeSales(self.kwargs['start'], self.kwargs['end'], exchange_rate=dl)
                 discountSales = self.getDiscountSales(self.kwargs['start'], self.kwargs['end'])
                 payments = self.getPayments(self.kwargs['start'], self.kwargs['end'])
+                movements = self.getCashMovements(self.kwargs['start'], self.kwargs['end'], exchange_rate=dl)
             elif self.kwargs['type'] == 2:
                 template = get_template('sale/reportProducts.html')
                 byProducts = self.getByProducts(self.kwargs['start'], self.kwargs['end'])
+
+            print(movements)
 
             totals = 0
             totalsBs = 0
@@ -899,8 +922,10 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             except:
                 pass
 
+            totalIncome = 0
             totalTypeSales = 0
             try:
+                totalIncome = float(typeSales['totalCash']) + float(typeSales['totalPayments'])
                 totalTypeSales = float(typeSales['totalCash']) + float(typeSales['totalCredit']) + float(typeSales['totalPayments'])
             except:
                 pass
@@ -911,12 +936,15 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 'day': self.kwargs['start'] + ' - ' + self.kwargs['end'],
                 'detTypeSales': typeSales,
                 'payMethod': payMethod,
+                'grand_total_usd': grand_total,
                 'totalTypeSales': totalTypeSales,
+                'totalIncome': totalIncome,
                 'discountSales': discountSales,
                 'totalDiscounts': totalDiscounts,
                 'totalPayments': totalPayments,
                 'totalPaymentsBs': totalPaymentsBs,
                 'payments': payments,
+                'movements': movements,
                 'totals': round(totals, 2),
                 'totalsBs': round(totalsBs, 2),
                 'byProducts': byProducts,

@@ -238,6 +238,9 @@
         <button id="product" type="button" class="btn btn-outline-info btnAdd">
             <i class="fas fa-plus"></i> Registrar Producto
         </button>
+        <button id="product" type="button" class="btn btn-outline-info btnCashMovement">
+            <i class="fas fa-calculator"></i> Movimiento de Caja
+        </button>
     </div>
     </div>
 </form>
@@ -299,8 +302,8 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">
-                        <b><i id="i_modal_title" class="fas fa-plus"></i> <i class="fas text-primary fa-boxes"></i>
-                            <span id="span_modal_title">NUEVO PRODUCTO</span></b>
+                        <b><i id="i_modal_title" class="fas fa-plus"></i> <i class="fas fa-boxes"></i>
+                            <span id="span_modal_title">Nuevo Producto</span></b>
                     </h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
@@ -354,6 +357,42 @@
                                 {{ formProduct.quantity|attr:'autocompletar:off' }}
                             </div>
                         </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" id="btn_submit" class="btn btn-outline-info btn-block"><i
+                            class="fas fa-save"></i>
+                        Guardar</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Modal Reistrar Movimiento de Caja -->
+<div class="modal fade" id="modalCashMovement" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <form method="post" action="." class="formCashMovement" enctype="multipart/form-data">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <b><i id="i_modal_title" class="fas fa-plus"></i> <i class="fas fa-calculator"></i>
+                            <span id="span_modal_title">Movimiento de Caja</span></b>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <input name="action" type="hidden" value="cashMovement">
+                        <input name="sede" type="hidden" value="">                 
+                         {% for field in formCashMovement.visible_fields %}
+                        <div class="form-group">
+                            <label>{{ field.label }}:</label>
+                            {{ field|add_class:'form-control' |attr:'autocompletar:off' }}
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
                 <div class="modal-footer">

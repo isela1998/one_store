@@ -727,3 +727,54 @@ class DetCreditForm(ModelForm):
         except Exception as e:
             data['error'] = str(e)
         return data
+    
+class CashMovementForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'method_pay' in self.fields:
+            self.fields['method_pay'].queryset = self.fields['method_pay'].queryset.exclude(id=1)
+
+    class Meta:
+        model = CashMovement
+        fields = '__all__'
+        widgets = {
+            'tipo':Select(
+            attrs={
+                'class': 'form-control larger',
+                'style': 'width: 100%; text-transform: capitalize'
+            }),
+            'method_pay':Select(
+            attrs={
+                'class': 'form-control larger',
+                'style': 'width: 100%; text-transform: capitalize'
+            }),
+            'amount_bs':TextInput(
+                attrs={
+                    'placeholder': 'Cantidad',
+                    'class': 'form-control text-center inputNumberFormat',
+                    'autocomplete': 'off',
+                    'min': 0
+                }
+            ),
+            'description': Textarea(
+                attrs={
+                'placeholder': 'Indique el detalle del movimiento',
+                'class': 'form-control large UpperCase',
+                'rows': 2,
+                'autocomplete': 'off',
+            }),
+        }
+        exclude = ['user', 'date_time', 'amount_dl', 'status']
+
+    def save(self, commit=True):
+        data = {}
+        form = super()
+        try:
+            if form.is_valid():
+                form.save()
+            else:
+                data['error'] = form.errors
+        except Exception as e:
+            data['error'] = str(e)
+        return data
+  

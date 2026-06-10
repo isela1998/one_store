@@ -29,6 +29,11 @@ STATUS_CHOICES = [
     ('INACTIVO', 'INACTIVO'),
 ]
 
+TIPO_CHOICES = [
+    ('INGRESO', 'INGRESO (Entrada)'),
+    ('EGRESO', 'EGRESO (Salida)'),
+]
+
 class Permisology(models.Model):
     name = models.CharField(max_length=255, verbose_name='Permiso')
     description = models.CharField(max_length=255, verbose_name='Descripción')
@@ -440,4 +445,29 @@ class DetDebt(models.Model):
     class Meta:
         verbose_name = 'Detalle de cuenta por pagar'
         verbose_name_plural = 'Detalle de cuentas por pagar'
+        ordering = ['id']
+
+class CashMovement(models.Model):
+    user = models.ForeignKey(User, on_delete=models.PROTECT, verbose_name="Registrado por")
+    date_time = models.DateTimeField(auto_now_add=True)
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    method_pay = models.ForeignKey(Method_pay, on_delete=models.PROTECT, verbose_name="Método de pago")
+    amount_bs = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Cantidad")
+    amount_dl = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Cantidad dólares")
+    description = models.CharField(max_length=255, verbose_name='Descripción')
+    status = models.IntegerField(default=1)
+    
+    def __str__(self):
+        return self.date_time
+    
+    def toJSON(self):
+        item = model_to_dict(self)
+        item['amount_bs'] = format(self.amount_bs, '.2f')
+        item['amount_dl'] = format(self.amount_dl, '.2f')
+        item['method_pay'] = self.method_pay.toJSON()
+        return item
+
+    class Meta:
+        verbose_name = 'Movimiento de Caja'
+        verbose_name_plural = 'Movimientos de Caja'
         ordering = ['id']

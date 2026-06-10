@@ -291,14 +291,11 @@ $(function () {
       $('#modalProduct').modal('show');
     });
 
-    $('.formProduct').on('submit', function (e) {
-      e.preventDefault();
-      convertToUpperCase();
-      let parameters = new FormData(this);
-      submit_with_ajax(window.location.pathname, parameters, function () {
-        $('#modalProduct').modal('hide');
-        alertSweetSuccess('Producto registrado con éxito');
-      });
+    $('.btnCashMovement').on('click', function () {
+      $('form')[3].reset();
+      document.getElementById('btn_submit').innerHTML =
+        '<i class="fas fa-save"></i> Registrar';
+      $('#modalCashMovement').modal('show');
     });
 
     $('select[name="method_pay"]').on('change', function () {
@@ -424,6 +421,10 @@ $(function () {
           url: window.location.pathname,
           data: function (params) {
             let textoBusqueda = params.term ? params.term.trim() : '';
+              
+            if(textoBusqueda === '') {
+              return false; 
+            }
             
             return {
               term: textoBusqueda,
@@ -464,6 +465,20 @@ $(function () {
           $(this).val('').trigger('change.select2');
           return false;
         }
+    });
+
+
+    $('select[name="search"]').on('select2:open', function() {
+        let searchInput = $('.select2-container--bootstrap4 .select2-search__field');
+        
+        searchInput.off('input').on('input', function() {
+            let valor = $(this).val().trim();
+            
+            if (valor === '') {
+                $('select[name="search"]').val(null).trigger('change.select2');
+                $('select[name="search"]').select2('close');
+            }
+        });
     });
 
     $('select[name="searchClient"]')
@@ -647,6 +662,27 @@ $(function () {
       alertSweetSuccess('Cliente registrado con éxito');
     });
   });
+
+  $('.formProduct').on('submit', function (e) {
+    e.preventDefault();
+    convertToUpperCase();
+    let parameters = new FormData(this);
+    submit_with_ajax(window.location.pathname, parameters, function () {
+      $('#modalProduct').modal('hide');
+      alertSweetSuccess('Producto registrado con éxito');
+    });
+  });
+
+  $('.formCashMovement').on('submit', function (e) {
+    e.preventDefault();
+    convertToUpperCase();
+    let parameters = new FormData(this);
+    submit_with_ajax(window.location.pathname, parameters, function () {
+      $('#modalCashMovement').modal('hide');
+      alertSweetSuccess('Movimiento registrado con éxito');
+    });
+  });
+
 });
 
 // Auxiliary functions
