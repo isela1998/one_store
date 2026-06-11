@@ -569,7 +569,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
         try:
             # Traemos las consultas nativas (filtramos una sola vez para velocidad)
             sales = Sale.objects.filter(datejoined__gte=start, datejoined__lte=end).exclude(status=2)
-            credits = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end).exclude(operation='+').exclude(status=0)
+            credits = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end).exclude(operation='+').exclude(status=0).exclude(status=2)
             
             for m in Method_pay.objects.all().exclude(pk=1):
                 idMethodPay = m.id
@@ -580,11 +580,9 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 payments_amount = 0.0
                 cash_in = 0.0
                 cash_out = 0.0
-                quantity = 0  # <--- Tu contador de transacciones
+                quantity = 0
                 
-                # --- CONTAR Y SUMAR VENTAS ---
                 for s in sales:
-                    # Comparamos usando los IDs directos del ORM (Evita el fallo del toJSON)
                     if s.method_pay_id == idMethodPay and float(s.received) > 0:
                         sales_amount += float(s.received)
                         quantity += 1  # Suma operación
@@ -597,16 +595,14 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                         sales_amount += float(s.received2)
                         quantity += 1  # Suma operación
 
-                # --- CONTAR Y SUMAR ABONOS DE CRÉDITOS ---
                 for c in credits:
                     if c.method_pay_id == idMethodPay:
-                        quantity += 1  # Suma operación abono
+                        quantity += 1 
                         if type_total == '$':
                             payments_amount += float(c.quantity)
                         elif type_total == 'Bs':
                             payments_amount += float(c.quantitybs)
 
-                # --- CONTAR Y SUMAR MOVIMIENTOS DE CAJA ---
                 movements = CashMovement.objects.filter(
                     date_time__date__gte=start, 
                     date_time__date__lte=end,
@@ -622,7 +618,6 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                         if type_total == '$': cash_out += float(mov.amount_dl)
                         elif type_total == 'Bs': cash_out += float(mov.amount_bs)
 
-                # --- MATEMÁTICA DE CIERRE ---
                 net_final = (sales_amount + payments_amount + cash_in) - cash_out
                 net_final = round(net_final, 2)
                 
@@ -657,7 +652,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
         acumulado_usd = acumulado_bs = totalCredit = totalPayments = 0.0
 
         try:
-            allPayments = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end).exclude(operation='+').exclude(status=0)
+            allPayments = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end).exclude(operation='+').exclude(status=0).exclude(status=2)
             allSales = Sale.objects.filter(datejoined__gte=start, datejoined__lte=end).exclude(status=2)
             
             for a in allSales:
@@ -715,7 +710,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     def getPayments(self, start, end):
         data = []
         try:
-            allPayment = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end, operation='-').exclude(status=0)
+            allPayment = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end, operation='-').exclude(status=0).exclude(status=2)
             for p in allPayment:
                 quantity = 0
                 quantityBs = 0

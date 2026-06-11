@@ -117,46 +117,7 @@
             </tr>
         </tbody>
     </table><br>
-    <span style="font-size: 12px; font-weight: 600; text-align: left;">2. CONCILIACIÓN POR MÉTODO DE PAGO</span><br>
-    <table id="invoice" style="width: 100%; border-collapse: collapse; margin-top: 5px;">
-        <thead>
-            <tr style="border-bottom: 1px solid black;">
-                <th style="font-size: 12px; text-align: left; width: 23%;">Método</th>
-                <th style="font-size: 12px; text-align: center; width: 7%;">Cant.</th>
-                <th style="font-size: 12px; text-align: right; width: 14%;">Ventas (+)</th>
-                <th style="font-size: 12px; text-align: right; width: 14%;">Abonos (+)</th>
-                <th style="font-size: 12px; text-align: right; width: 14%;">Ing. Caja(+)</th>
-                <th style="font-size: 12px; text-align: right; width: 14%;">Egr. Caja(-)</th>
-                <th style="font-size: 12px; text-align: right; width: 14%;">Neto Final</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for d in payMethod %}
-            <tr style="padding-top: 2px;">
-                <td style="font-size: 12px; padding: 3px 0;">{{ d.method|capfirst }} ({{ d.currency }}) </td>
-                <td style="font-size: 12px; text-align: center;">{{ d.quantity }}</td>
-                <td style="font-size: 12px; text-align: right;">{{ d.sales_amount|floatformat:2 }} {{ d.currency }}</td>
-                <td style="font-size: 12px; text-align: right;">{{ d.payments_amount|floatformat:2 }} {{ d.currency }}</td>
-                <td style="font-size: 12px; text-align: right; color: green;">+{{ d.cash_in|floatformat:2 }} {{ d.currency }}</td>
-                <td style="font-size: 12px; text-align: right; color: red;">-{{ d.cash_out|floatformat:2 }} {{ d.currency }}</td>
-                <td style="font-size: 12px; text-align: right; font-weight: 600;">{{ d.net_final|floatformat:2 }} {{ d.currency }}</td>
-            </tr>
-            {% endfor %}
-            
-            <tr style="border-top: 1px solid black; font-weight: bold;">
-                <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
-                <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
-                <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
-                <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
-                <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
-                <td style="font-size: 12px; padding-top: 2px; text-align: right;">TOTAL:</td>
-                <td style="font-size: 12px; padding-top: 2px; text-align: right; color: {% if grand_total_usd >= 0 %}green{% else %}red{% endif %};">
-                    {{ grand_total_usd|floatformat:2 }} $
-                </td>
-            </tr>
-        </tbody>
-    </table><br>
-    <br><span style="font-size: 12px; font-weight: 600; text-align: left;">3. DETALLE DE MOVIMIENTOS DE CAJA</span><br>
+    <br><span style="font-size: 12px; font-weight: 600; text-align: left;">2. DETALLE DE MOVIMIENTOS DE CAJA</span><br>
     <table id="invoice">
         <thead>
             <tr>
@@ -192,13 +153,52 @@
             <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
             <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
             <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
-            <td style="font-size: 12px; padding-top: 2px; text-align: right;">TOTAL:</td>
+            <td style="font-size: 12px; padding-top: 2px; text-align: right;">T. MOVIMIENTOS:</td>
            <td style="font-size: 12px; padding-top: 2px; text-align: center;
                     color: {% if movements.total_mov_caja >= 0 %} green {% else %} red {% endif %};">
                     {% if movements.total_mov_caja > 0 %}+{% endif %}{{ movements.total_mov_caja|floatformat:2 }} $
             </td>
         </tr>
     </tbody>
+    </table><br>
+    <span style="font-size: 12px; font-weight: 600; text-align: left;">3. CONCILIACIÓN POR MÉTODO DE PAGO</span><br>
+    <table id="invoice" style="width: 100%; border-collapse: collapse; margin-top: 5px;">
+        <thead>
+            <tr style="border-bottom: 1px solid black;">
+                <th style="font-size: 12px; text-align: left; width: 23%;">Método</th>
+                <th style="font-size: 12px; text-align: center; width: 7%;">Cant.</th>
+                <th style="font-size: 12px; text-align: right; width: 14%;">Ventas (+)</th>
+                <th style="font-size: 12px; text-align: right; width: 14%;">Abonos (+)</th>
+                <th style="font-size: 12px; text-align: right; width: 14%;">Ing. Caja(+)</th>
+                <th style="font-size: 12px; text-align: right; width: 14%;">Egr. Caja(-)</th>
+                <th style="font-size: 12px; text-align: right; width: 14%;">Neto Final</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in payMethod %}
+            <tr style="padding-top: 2px;">
+                <td style="font-size: 12px; padding: 3px 0;">{{ d.method|capfirst }} ({{ d.currency }}) </td>
+                <td style="font-size: 12px; text-align: center;">{{ d.quantity }}</td>
+                <td style="font-size: 12px; text-align: right;">{{ d.sales_amount|floatformat:2 }} {{ d.currency }}</td>
+                <td style="font-size: 12px; text-align: right;">{{ d.payments_amount|floatformat:2 }} {{ d.currency }}</td>
+                <td style="font-size: 12px; text-align: right; color: green;">+{{ d.cash_in|floatformat:2 }} {{ d.currency }}</td>
+                <td style="font-size: 12px; text-align: right; color: red;">-{{ d.cash_out|floatformat:2 }} {{ d.currency }}</td>
+                <td style="font-size: 12px; text-align: right; font-weight: 600;">{{ d.net_final|floatformat:2 }} {{ d.currency }}</td>
+            </tr>
+            {% endfor %}
+            
+            <tr style="border-top: 1px solid black; font-weight: bold;">
+                <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
+                <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
+                <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
+                <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
+                <td style="font-size: 12px; text-align: center; padding-top: 2px;"></td>
+                <td style="font-size: 12px; padding-top: 2px; text-align: right;">TOTAL GRAL. :</td>
+                <td style="font-size: 12px; padding-top: 2px; text-align: right; color: {% if grand_total_usd >= 0 %}green{% else %}red{% endif %};">
+                    {{ grand_total_usd|floatformat:2 }} $
+                </td>
+            </tr>
+        </tbody>
     </table><br><br>
     <span style="font-size: 12px; font-weight: 600; text-align: left;">4. DETALLE DE ABONOS DE VENTAS A CRÉDITO</span><br>
     <table id="invoice">

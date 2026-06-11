@@ -110,7 +110,7 @@ class DashboardView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
                     last_credit_date__month=m, 
                     status=1,
                     operation='-'
-                ).aggregate(r=Coalesce(Sum('quantity'), 0.0)).get('r')
+                ).exclude(status=0).exclude(status=2).aggregate(r=Coalesce(Sum('quantity'), 0.0)).get('r')
                 data_abonos.append(float(total_abonos))
 
                 

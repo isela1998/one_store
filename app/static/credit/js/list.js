@@ -369,6 +369,13 @@ $(function () {
       btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
       // Send Data
       let parameters = new FormData(this);
+      const checkPayAll = this.querySelector('input[name="checkPayAll"]');
+      if (checkPayAll) {
+          parameters.set('checkPayAll', checkPayAll.checked ? 1 : 0);
+      }
+      for (let [key, value] of parameters.entries()) {
+        console.log(key, value);
+      }
       submit_with_ajax_with_error(window.location.pathname, parameters, function () {
         $('#modalPayment').modal('hide');
         alertSweetSuccess('Abono registrado');

@@ -45,8 +45,8 @@
 {% endblock %}
 
 {% block buttons_list %}
-<a href="#" class="btn btn-outline-info btn-report-credit">
-    <i class="fas fa-file-alt"></i> <span> Generar reporte de ventas a crédito</span></a>
+{% comment %} <a href="#" class="btn btn-outline-info btn-report-credit">
+    <i class="fas fa-file-alt"></i> <span> Generar reporte de ventas a crédito</span></a> {% endcomment %}
 {% endblock %}
 
 {% block javascript %}
@@ -110,6 +110,13 @@
                             <input type="text" class="form-control" name="pending2Bs" value="" disabled>
                         </div>
                     </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="checkPayAll" id="checkPayAll">
+                        <label class="form-check-label" for="checkPayAll">
+                            Marcar restante como pagado
+                        </label>
+                    </div>
+                    <hr>
                     <div class="form-group">
                         <span>Descripción</span>
                         <textarea name="description" class="form-control" id="description"

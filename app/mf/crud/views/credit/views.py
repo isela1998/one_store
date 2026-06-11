@@ -111,16 +111,37 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     credit.totalDebt = totalDebt
                     credit.save()
 
+                    method = Method_pay.objects.get(pk=request.POST['method_pay'])
+
                     newDetCredit = DetCredit()
                     newDetCredit.credit_id = credit.id
                     newDetCredit.last_credit_date = datejoined
-                    newDetCredit.method_pay_id = request.POST['method_pay']
+                    newDetCredit.method_pay_id = method.id
                     newDetCredit.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
                     newDetCredit.operation = '-'
                     newDetCredit.quantity = float(amount)
                     newDetCredit.quantitybs = float(amountBs)
-                    newDetCredit.description = request.POST['description']
+                    newDetCredit.description = ' Método: ' + str(method.name) + '. ' + request.POST['description']
                     newDetCredit.save()
+
+                    check_pay_all = request.POST.get('checkPayAll') == '1'
+                    if check_pay_all and credit.totalDebt > 0:
+                        residuo = float(credit.totalDebt)
+                        
+                        closeCredit = DetCredit()
+                        closeCredit.credit_id = credit.id
+                        closeCredit.last_credit_date = datejoined
+                        closeCredit.method_pay_id = 1
+                        closeCredit.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
+                        closeCredit.operation = '-'
+                        closeCredit.quantity = residuo
+                        closeCredit.quantitybs = round((residuo * float(dl_value)), 2)
+                        closeCredit.description = 'Marcado manualmente como pagado'
+                        closeCredit.status = 2
+                        closeCredit.save()
+                        
+                        credit.totalDebt = 0
+                        credit.save()
             elif action == 'delete':
                 group = request.user.groups.first()
                 if group != 1:
