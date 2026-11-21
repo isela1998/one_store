@@ -540,6 +540,13 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     def link_callback(self, uri, rel):
         return resolve_pdf_uri(uri)
 
+    @staticmethod
+    def sale_rate(sale, fallback):
+        """Tasa del dólar de la venta (la que se registró al facturar). Si no se guardó (ventas muy
+        antiguas con tasa 0) se usa la tasa de respaldo recibida."""
+        rate = float(sale.rate or 0)
+        return rate if rate > 0 else float(fallback)
+
     def getByPayMethod(self, start, end, exchange_rate=1.0):
         data = []
         grand_total_usd = 0.0 
@@ -558,24 +565,22 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 payments_amount = 0.0
                 cash_in = 0.0
                 cash_out = 0.0
-                quantity = 0
-                
+                quantity = 0 
+                # Equivalente en dólares de lo cobrado en bolívares, a la tasa de cada operación
+                # (la de la venta, la del abono o la del movimiento) y no a la tasa de hoy
+                usd_net = 0.0
+
                 for s in sales:
-                    if s.method_pay_id == idMethodPay and float(s.received) > 0:
-                        sales_amount += float(s.received)
-                        quantity += 1  # Suma operación
-                        
-                    if s.method_pay1_id == idMethodPay and float(s.received1) > 0:
-                        sales_amount += float(s.received1)
-                        quantity += 1  # Suma operación
-                        
-                    if s.method_pay2_id == idMethodPay and float(s.received2) > 0:
-                        sales_amount += float(s.received2)
-                        quantity += 1  # Suma operación
+                    for method_id, received in ((s.method_pay_id, s.received), (s.method_pay1_id, s.received1), (s.method_pay2_id, s.received2)):
+                        if method_id == idMethodPay and float(received) > 0:
+                            sales_amount += float(received)
+                            quantity += 1  # Suma operación
+                            usd_net += float(received) / self.sale_rate(s, exchange_rate) if type_total == 'Bs' else 0.0
 
                 for c in credits:
                     if c.method_pay_id == idMethodPay:
-                        quantity += 1 
+                        quantity += 1  # Suma operación abono
+                        usd_net += float(c.quantity)  # dólares equivalentes guardados al registrar el abono
                         if type_total == '$':
                             payments_amount += float(c.quantity)
                         elif type_total == 'Bs':
@@ -588,11 +593,13 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     status=1
                 )
                 for mov in movements:
-                    quantity += 1  # Suma operación movimiento manual
+                    quantity += 1
                     if mov.tipo == 'INGRESO':
+                        usd_net += float(mov.amount_dl)  # dólares guardados al registrar el movimiento
                         if type_total == '$': cash_in += float(mov.amount_dl)
                         elif type_total == 'Bs': cash_in += float(mov.amount_bs)
                     elif mov.tipo == 'EGRESO':
+                        usd_net -= float(mov.amount_dl)
                         if type_total == '$': cash_out += float(mov.amount_dl)
                         elif type_total == 'Bs': cash_out += float(mov.amount_bs)
 
@@ -602,14 +609,13 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 if type_total == '$':
                     grand_total_usd += net_final
                 elif type_total == 'Bs':
-                    if float(exchange_rate) > 0:
-                        grand_total_usd += round(net_final / float(exchange_rate), 2)
+                    grand_total_usd += round(usd_net, 2)
 
                 result = {
                     'id': idMethodPay,
                     'method': name,
                     'currency': type_total,
-                    'quantity': quantity,  # <--- Agregado al diccionario para tu HTML
+                    'quantity': quantity,
                     'sales_amount': round(sales_amount, 2),
                     'payments_amount': round(payments_amount, 2),
                     'cash_in': round(cash_in, 2),
@@ -626,37 +632,34 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     def getByTypeSales(self, start, end, exchange_rate):
         data = {}
         cash = credit = payments = 0
-        acumulado_usd = acumulado_bs = totalCredit = totalPayments = 0.0
+        acumulado_usd = acumulado_bs_usd = totalCredit = totalPayments = 0.0
 
         try:
             allPayments = DetCredit.objects.filter(last_credit_date__gte=start, last_credit_date__lte=end).exclude(operation='+').exclude(status=0).exclude(status=2)
-            allSales = Sale.objects.filter(datejoined__gte=start, datejoined__lte=end).exclude(status=2)
-            
+            allSales = (Sale.objects.filter(datejoined__gte=start, datejoined__lte=end).exclude(status=2)
+                        .select_related('method_pay', 'method_pay1', 'method_pay2'))
+
             for a in allSales:
                 if a.type_sale == 'Al Contado':
                     cash += 1
-                    if a.method_pay and a.received > 0:
-                        if str(a.method_pay.type_symbol).strip() == 'Bs': acumulado_bs += float(a.received)
-                        else: acumulado_usd += float(a.received)
-                    
-                    if a.method_pay1 and a.received1 > 0:
-                        if str(a.method_pay1.type_symbol).strip() == 'Bs': acumulado_bs += float(a.received1)
-                        else: acumulado_usd += float(a.received1)
-                            
-                    if a.method_pay2 and a.received2 > 0:
-                        if str(a.method_pay2.type_symbol).strip() == 'Bs': acumulado_bs += float(a.received2)
-                        else: acumulado_usd += float(a.received2)
-                    
+                    # Los bolívares se convierten a la tasa de cada venta, no a la de hoy
+                    for method, received in ((a.method_pay, a.received), (a.method_pay1, a.received1), (a.method_pay2, a.received2)):
+                        if method and received > 0:
+                            if str(method.type_symbol).strip() == 'Bs':
+                                acumulado_bs_usd += float(received) / self.sale_rate(a, exchange_rate)
+                            else:
+                                acumulado_usd += float(received)
+
                 elif a.type_sale == 'Crédito':
                     credit += 1
                     totalCredit += float(a.total)
-                    
+
             for a in allPayments:
                 payments += 1
                 totalPayments += float(a.quantity)
-                
-            totalCash = acumulado_usd + round(acumulado_bs / float(exchange_rate), 2)
-                
+
+            totalCash = acumulado_usd + round(acumulado_bs_usd, 2)
+
             data = {
                 'cash': cash, 'credit': credit, 'payments': payments,
                 'totalCash': round(totalCash, 2),
@@ -665,7 +668,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             }
         except Exception as e:
             logger.exception('[%s] error generando reporte por tipo de venta', __name__)
-            
+
         return data
 
     def getDiscountSales(self, start, end):
@@ -718,7 +721,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 date_time__date__gte=start, 
                 date_time__date__lte=end, 
                 status=1
-            ).order_by('-date_time')
+            ).select_related('method_pay', 'user').order_by('-date_time')
             
             total_ingresos = 0
             total_egresos = 0
@@ -726,27 +729,20 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             total_egresos_dl = 0
             
             for m in allMovements:
-                item = m.toJSON()
-                
                 amount = 0
-                amount_bs = float(item['amount_bs'])
-                amount_dl = float(item['amount_dl'])
+                amount_bs = float(m.amount_bs)
+                amount_dl = float(m.amount_dl)
 
-                method = Method_pay.objects.get(pk=m.method_pay.id)
+                method = m.method_pay
 
-                if(method.type_symbol == 'Bs'):
-                    amount = amount_bs
-                    if(m.tipo == 'INGRESO'):
-                        total_ingresos += amount
-                    else:
-                        total_egresos += amount
+                # Se muestra en la moneda del método; el total en dólares usa los dólares
+                # guardados al registrar el movimiento (a la tasa de ese día)
+                amount = amount_bs if method.type_symbol == 'Bs' else amount_dl
+                if m.tipo == 'INGRESO':
+                    total_ingresos_dl += amount_dl
                 else:
-                    amount = amount_dl
-                    if(m.tipo == 'INGRESO'):
-                        total_ingresos_dl += amount
-                    else:
-                        total_egresos_dl += amount
-                
+                    total_egresos_dl += amount_dl
+
                 hora_local = timezone.localtime(m.date_time)
                 date_formatted = hora_local.strftime('%d/%m/%Y %I:%M %p')
                 
@@ -761,17 +757,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 }
                 data.append(detail)
 
-            if float(exchange_rate) > 0:
-                ingresos_convertidos_bs = total_ingresos / float(exchange_rate)
-                egresos_convertidos_bs = total_egresos / float(exchange_rate)
-            else:
-                ingresos_convertidos_bs = 0.0
-                egresos_convertidos_bs = 0.0
-                
-            gran_total_ingresos_usd = total_ingresos_dl + ingresos_convertidos_bs
-            gran_total_egresos_usd = total_egresos_dl + egresos_convertidos_bs
-                
-            total_neto_global_usd = gran_total_ingresos_usd - gran_total_egresos_usd
+            total_neto_global_usd = total_ingresos_dl - total_egresos_dl
                 
             return {
                 'movements': data,

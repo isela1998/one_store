@@ -33,6 +33,8 @@ Despliegue en PC local (como base_facturacion): **SEG-04 y SEG-05 descartados** 
 | Método de pago `pk=1` ("NO APLICA") fijo | DESCARTADO. |
 | Permiso del reporte de cuentas por pagar | Cambia de `add_user` a `view_debt`. |
 | Margen de ganancias con stock exactamente 5 | Corregido (fallaba toda la lista). |
+| Tasa del dólar por venta en reportes | Los reportes de ventas por rango convierten los bolívares con la tasa guardada en cada venta (`Sale.rate`; si una venta antigua no la tiene, usan la de hoy como respaldo). Abonos y movimientos de caja ya usaban sus dólares guardados. Portado de jeantren sin lo de Cashea. |
+| Reporte de ventas por productos | Botón "Generar reporte de productos" activado de nuevo en el historial de ventas (estaba comentado). Reporte verificado con varias ventas y decimales; el total vendido ahora lleva `$`. |
 | Código muerto | Eliminados `RegisterOperation` (usaba un modelo inexistente) y `LoginFormView2`. Quedan sin tocar: logout por GET y `getStaticUrl()` con `localhost`. |
 | Módulo de caja y margen de ganancias (JS) | Escape de HTML aplicado (patrón de SEG-08). |
 
