@@ -21,11 +21,13 @@ from django.conf import settings
 from xhtml2pdf import pisa
 from datetime import date
 
+import logging
+logger = logging.getLogger(__name__)
+
 class GainMaginListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     template_name = 'gainMargin/list.html'
     permission_required = 'view_product', 'add_product', 'change_product', 'delete_product'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -35,20 +37,21 @@ class GainMaginListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateVie
             action = request.POST['action']
             if action == 'searchdata':
                 data = []
-                for i in Product.objects.exclude(cost__lte=0.00).exclude(status=0):
+                for i in Product.objects.select_related('category', 'type_product').exclude(cost__lte=0.00).exclude(status=0):
                     item = i.toJSON()
                     item['gainU'] = float(item['price_dl']) - float(item['cost'])
                     item['gain'] = (float(item['price_dl']) - float(item['cost'])) * float(item['quantity'])
                     if(i.quantity < 5):
                         css = 'badge badge-danger fill-available pointer-1'
-                    elif(i.quantity > 5):
+                    else:
                         css = 'badge badge-success fill-available pointer-1'
                     item['css'] = css
                     data.append(item)
             else:
                 data['error'] = "Ha ocurrido un error"
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):

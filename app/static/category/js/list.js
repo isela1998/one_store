@@ -30,7 +30,7 @@ function getData() {
       $('#searchBox').css('width', '350px').focus();
       $('#data').removeClass('dataTables_filter');
     },
-    columns: [{ data: 'name' }, { data: 'name' }],
+    columns: [{ data: 'name', render: $.fn.dataTable.render.text() }, { data: 'name' }],
     columnDefs: [
       {
         targets: [-1],

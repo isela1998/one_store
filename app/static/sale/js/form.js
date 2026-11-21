@@ -156,7 +156,7 @@ var sales = {
           class: 'text-left tdLarger',
           orderable: false,
           render: function (data, type, row, meta) {
-            return `<span class="pointer-1 product-name" data-title="Stock: ${row.initial}"> ${row.category.name} - ${row.brand} ${row.product} (${row.type_product.name})</span>`;
+            return `<span class="pointer-1 product-name" data-title="Stock: ${row.initial}"> ${escapeHtml(row.category.name)} - ${escapeHtml(row.brand)} ${escapeHtml(row.product)} (${escapeHtml(row.type_product.name)})</span>`;
           },
         },
         {

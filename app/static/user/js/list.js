@@ -31,7 +31,7 @@ function getData() {
     columns: [
       { data: 'groups' },
       { data: 'date_joined' },
-      { data: 'full_name' },
+      { data: 'full_name', render: $.fn.dataTable.render.text() },
       { data: 'username' },
       { data: 'id' },
     ],
@@ -42,7 +42,7 @@ function getData() {
         render: function (data, type, row) {
           let group = '';
           $.each(row.groups, function (key, value) {
-            group += `<span class="badge bg-info fill-available badge-info">${value.name}</span>`;
+            group += `<span class="badge bg-info fill-available badge-info">${escapeHtml(value.name)}</span>`;
           });
           return group;
         },
@@ -55,7 +55,7 @@ function getData() {
         targets: [-2],
         class: 'text-center',
         render: function (data, type, row) {
-          let username = `<span class="badge bg-info fill-available badge-info">${data}</span>`;
+          let username = `<span class="badge bg-info fill-available badge-info">${escapeHtml(data)}</span>`;
           return username;
         },
       },

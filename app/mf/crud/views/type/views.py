@@ -11,11 +11,13 @@ from mf.crud.forms import TypeProductForm
 from mf.crud.models import Type_product
 from mf.crud.functions import *
 
+import logging
+logger = logging.getLogger(__name__)
+
 class TypeListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     template_name = 'type/list.html'
     permission_required = 'view_type_product', 'add_type_product', 'change_type_product', 'delete_type_product'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -25,9 +27,6 @@ class TypeListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
         try:
             sede = request.POST['sede']
             action = request.POST['action']
-            perm = {'add': 'add_type_product', 'edit': 'change_type_product', 'delete': 'delete_type_product'}.get(action)
-            if perm and not ValidatePermissions([perm], request.user.groups.first()):
-                return JsonResponse({'error': 'Disculpe, usted no tiene permisos para ejecutar esta acción'})
             if action == 'searchdata':
                 data = []
                 for i in Type_product.objects.using(db).all():
@@ -36,19 +35,17 @@ class TypeListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
                 type_p = Type_product()
                 type_p.name = request.POST['name']
                 type_p.save(using='default')
-                RegisterOperation(db, request.user.pk, 'Registró una nuevo tipo de producto')      
             elif action == 'edit':
                 type_p = Type_product.objects.using(db).get(pk=request.POST['id'])
                 type_p.name = request.POST['name']
                 type_p.save(using='default')
-                RegisterOperation(db, request.user.pk, 'Editó un tipo de producto')      
             elif action == 'delete':
                 Type_product.objects.using('default').get(pk=request.POST['id']).delete()
-                RegisterOperation(db, request.user.pk, 'Eliminó un tipo de producto')      
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):

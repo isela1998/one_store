@@ -24,7 +24,7 @@ function getData() {
       dataSrc: '',
     },
     columns: [
-      { data: 'user' },
+      { data: 'user', render: $.fn.dataTable.render.text() },
       { data: 'datejoined' },
       { data: 'budget_number' },
       { data: 'client' },
@@ -47,7 +47,7 @@ function getData() {
       {
         targets: [-3],
         render: function (data, type, row) {
-          let client = `<i>${data.names} (${data.ci}) ${data.contact}</i>`;
+          let client = `<i>${escapeHtml(data.names)} (${escapeHtml(data.ci)}) ${escapeHtml(data.contact)}</i>`;
           return client;
         },
       },

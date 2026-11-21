@@ -3,7 +3,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, V
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.urls import reverse_lazy
-from django.db import transaction
+from django.db import connections, transaction
 from datetime import date, datetime, timedelta
 import json
 from django.utils import timezone
@@ -15,7 +15,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from mf.crud.models import Product, Sale, Credit, DetCredit, Budget, DetSale, DetBudget, Client, Method_pay, Dolar, CashMovement
 from mf.crud.forms import SaleForm, ClientForm, MethodPayForm, ProductForm, CashMovementForm
 from mf.crud.functions import *
-from django.db.models import Q
+from django.db.models import F, Prefetch, Q
 
 import os
 from django.conf import settings
@@ -24,12 +24,19 @@ from xhtml2pdf import pisa
 # from django_xhtml2pdf.utils import pdf_decorator
 from django.contrib.staticfiles import finders
 
+from django.contrib import messages
+import logging
+logger = logging.getLogger(__name__)
+
+# Claves de pg_advisory_xact_lock para la numeración de facturas y presupuestos
+INVOICE_LOCK_KEY = 80010001
+BUDGET_LOCK_KEY = 80010002
+
 class SaleListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     model = Sale
     template_name = 'sale/list.html'
     permission_required = 'view_sale'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -41,7 +48,12 @@ class SaleListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             action = request.POST['action']
             if action == 'searchdata':
                 data = []
-                for i in Sale.objects.using(db).filter(datejoined__gte=request.POST['start'], datejoined__lte=request.POST['end']):
+                sales_qs = Sale.objects.using(db).filter(
+                    datejoined__gte=request.POST['start'], datejoined__lte=request.POST['end']
+                ).select_related('client', 'method_pay', 'method_pay1', 'method_pay2').prefetch_related(
+                    Prefetch('detsale_set', queryset=DetSale.objects.select_related('prod__category', 'prod__type_product'))
+                )
+                for i in sales_qs:
                     item = i.toJSON()
                     if(i.status == 0):
                         css = 'badge badge-success text-dark pointer-1'
@@ -56,35 +68,44 @@ class SaleListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     item['css'] = css
                     data.append(item)
             elif action == 'return':
-                datejoined = date.today().strftime('%Y-%m-%d')
-                sale = Sale.objects.using(db).get(pk=request.POST['id'])
-                
-                if sale.status == 2:
-                    data['error'] = 'Ya esta venta fue anulada anteriormente'
-                else:
-                    with transaction.atomic(using=db):
-                        det = DetSale.objects.using(db).filter(sale_id=request.POST['id'])
-                        for i in det:
-                            pw = Product.objects.using(db).get(pk=i.prod_id)
-                            pw.quantity = float(pw.quantity) + float(i.quantity)
-                            pw.save(using=db)
-                            
-                        if sale.type_sale == 'Crédito':
-                            det_credits = DetCredit.objects.using(db).filter(sale=sale)
-                                
-                            for dc in det_credits:
-                                credit_header = dc.credit
-                                credit_header.totalDebt -= dc.quantity
-                                credit_header.save(using=db)
-                                    
-                                dc.delete(using=db)
+                require_perm(request.user, 'change_sale')
+                reason = (request.POST.get('reason') or '').strip()
+                if not reason:
+                    raise UserError('Debe indicar el motivo de la anulación')
+                if len(reason) > 255:
+                    raise UserError('El motivo de la anulación no puede superar los 255 caracteres')
+                with transaction.atomic(using=db):
+                    sale = Sale.objects.using(db).select_for_update().get(pk=request.POST['id'])
+                    if sale.status == 2:
+                        raise UserError('Ya esta venta fue anulada anteriormente')
 
-                        sale.status = 2
-                        sale.save(using=db)
+                    for i in DetSale.objects.using(db).filter(sale_id=sale.id):
+                        Product.objects.using(db).filter(pk=i.prod_id).update(
+                            quantity=F('quantity') + i.quantity
+                        )
+
+                    if sale.type_sale == 'Crédito':
+                        det_credits = DetCredit.objects.using(db).filter(sale=sale)
+
+                        for dc in det_credits:
+                            credit_header = dc.credit
+                            credit_header.totalDebt -= dc.quantity
+                            credit_header.save(using=db)
+
+                            dc.delete(using=db)
+
+                    sale.status = 2
+                    sale.cancelled_by = request.user.username
+                    sale.cancelled_at = timezone.now()
+                    sale.cancel_reason = reason
+                    sale.save(using=db)
+                logger.info('[sale.return] OK venta=%s factura=%s usuario=%s motivo=%s',
+                            sale.id, sale.invoice_number, request.user, reason)
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):
@@ -108,7 +129,6 @@ class SaleCreateView(LoginRequiredMixin, ValidatePermissionMixin, CreateView):
     template_name = 'sale/create.html'
     permission_required = 'add_sale'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -184,8 +204,10 @@ class SaleCreateView(LoginRequiredMixin, ValidatePermissionMixin, CreateView):
             elif action == 'add':
                 data = self.addSale(db, request.POST, request.user)
             elif action == 'cashMovement':
-                dolar = Dolar.objects.using(db).get(pk=1)
-                dl = float(dolar.dolar)
+                require_perm(request.user, 'add_cashmovement')
+                dolar = Dolar.objects.using(db).filter(pk=1).first()
+                dl = float(dolar.dolar) if dolar else 0
+                require_dollar_rate(dl)
 
                 method = Method_pay.objects.get(pk=request.POST['method_pay'])
                 type_symbol = method.type_symbol
@@ -237,10 +259,12 @@ class SaleCreateView(LoginRequiredMixin, ValidatePermissionMixin, CreateView):
                             'id': sale.id,
                         }
                 except Exception as e:
+                    log_error(logger, e, '[sale.addBudget] usuario=%s', request.user)
                     data = {
-                        'error': str(e)
+                        'error': error_message(e)
                     }
             elif action == 'addClient':
+                require_perm(request.user, 'add_client')
                 cli = Client()
                 cli.names = request.POST['names']
                 cli.identity = request.POST['identity']
@@ -272,6 +296,8 @@ class SaleCreateView(LoginRequiredMixin, ValidatePermissionMixin, CreateView):
                     price = price_bs / iva
                     
                     quantity = float(request.POST['quantity'])
+                    if quantity < 0:
+                        raise UserError('La cantidad no puede ser negativa')
                     
                     with transaction.atomic():
                         p = Product()
@@ -290,15 +316,16 @@ class SaleCreateView(LoginRequiredMixin, ValidatePermissionMixin, CreateView):
             else:
                 data['error'] = 'No ha ingresado a ninguna opción'
         except Exception as e:
-            data['error'] = str(e)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def addSale(self, db, requestPOST, requestUser):
         data = {}
         datejoined = date.today().strftime('%Y-%m-%d')
-        
-        dolar_obj = Dolar.objects.using(db).get(pk=1)
-        dl = Decimal(str(dolar_obj.dolar)) 
+
+        dolar_obj = Dolar.objects.using(db).filter(pk=1).first()
+        dl = Decimal(str(dolar_obj.dolar)) if dolar_obj else Decimal('0')
+        require_dollar_rate(dl)
 
         clientId = int(requestPOST['searchClient'])
         sales = json.loads(requestPOST['sales'])
@@ -381,19 +408,24 @@ class SaleCreateView(LoginRequiredMixin, ValidatePermissionMixin, CreateView):
                     newDet.description = f"Factura # {sale.invoice_number}"
                     newDet.save(using=db)
 
+                # Bloquear todos los productos del carrito en orden fijo (por id) evita
+                # deadlocks entre ventas simultáneas con los mismos productos.
+                ids = sorted({int(i['id']) for i in sales['products']})
+                list(Product.objects.using(db).select_for_update().filter(pk__in=ids).order_by('pk'))
+
                 for i in sales['products']:
                     pw = Product.objects.using(db).select_for_update().get(pk=i['id'])
                     cantidad_vendida = Decimal(str(i['quantity']))
 
                     if cantidad_vendida <= 0:
-                        raise Exception(f"Se detectó una cantidad inválida ({cantidad_vendida}) para el producto '{pw.category.name} - {pw.product} ({pw.type_product.name})'. Por favor, verifique e intente de nuevo.")
+                        raise UserError(f"Se detectó una cantidad inválida ({cantidad_vendida}) para el producto '{pw.category.name} - {pw.product} ({pw.type_product.name})'. Por favor, verifique e intente de nuevo.")
 
                     stock_actual = Decimal(str(pw.quantity))
 
                     if stock_actual < cantidad_vendida:
                         stock_formateado = int(stock_actual) if stock_actual % 1 == 0 else float(stock_actual)
                         cant_formateada = int(cantidad_vendida) if cantidad_vendida % 1 == 0 else float(cantidad_vendida)        
-                        raise Exception(f"Stock insuficiente para '{pw.category.name} - {pw.product} ({pw.type_product.name})'. Disponible: {stock_formateado}, Solicitado: {cant_formateada}")
+                        raise UserError(f"Stock insuficiente para '{pw.category.name} - {pw.product} ({pw.type_product.name})'. Disponible: {stock_formateado}, Solicitado: {cant_formateada}")
                     
                     pw.quantity = stock_actual - cantidad_vendida
                     pw.save(using=db)
@@ -408,10 +440,14 @@ class SaleCreateView(LoginRequiredMixin, ValidatePermissionMixin, CreateView):
                     det.save(using=db)
                     
             data = { 'id': sale.id }
+            logger.info('[sale.add] OK venta=%s factura=%s usuario=%s productos=%s',
+                        sale.id, sale.invoice_number, requestUser.username, len(sales['products']))
 
         except Exception as e:
+            log_error(logger, e, '[sale.add] FALLÓ usuario=%s cliente=%s payload=%s',
+                             requestUser.username, clientId, str(sales)[:1000])
             data = {
-                'error': str(e)
+                'error': error_message(e)
             }
 
         return data
@@ -422,27 +458,26 @@ class SaleCreateView(LoginRequiredMixin, ValidatePermissionMixin, CreateView):
             data.append(i.toJSON())
         return data
 
+    def _next_number(self, queryset, field, db, lock_key):
+        # Candado de PostgreSQL que dura lo que dura la transacción: serializa la
+        # generación del número entre ventas simultáneas (se libera al confirmar).
+        with connections[db].cursor() as cursor:
+            cursor.execute('SELECT pg_advisory_xact_lock(%s)', [lock_key])
+
+        recent = list(queryset.order_by('-id').values_list(field, flat=True)[:50])
+        if not recent:
+            return f"{1:0>8}"
+        for value in recent:
+            if str(value).strip().isdigit():
+                return f"{int(value) + 1:0>8}"
+        raise UserError('No se pudo determinar el siguiente número: los últimos registros no tienen numeración numérica.')
+
     def get_lastet_invoice(self, db):
-        try:
-            lastSale = Sale.objects.using(db).last()
-            last_invoice = lastSale.invoice_number
-            new_invoice = int(last_invoice) + 1
-        except:
-            new_invoice = 1
-        n_invoice = f"{new_invoice:0>8}"
-        return n_invoice
+        return self._next_number(Sale.objects.using(db), 'invoice_number', db, INVOICE_LOCK_KEY)
 
     def get_lastet_budget(self):
-        try:
-            budget = Budget.objects.last()
-            last_budget = budget.budget_number
-            new_budget = int(last_budget) + 1
-            n_budget = f"{new_budget:0>8}"
-        except:
-            new_budget = 1
-            n_budget = f"{new_budget:0>8}"
-        return n_budget
-
+        return self._next_number(Budget.objects.using('default'), 'budget_number', 'default', BUDGET_LOCK_KEY)
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'MÓDULO DE FACTURACIÓN - NUEVA VENTA'
@@ -465,35 +500,7 @@ class SaleInvoicePdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     permission_required = 'add_sale'
 
     def link_callback(self, uri, rel):
-            """
-            Convert HTML URIs to absolute system paths so xhtml2pdf can access those
-            resources
-            """
-            result = finders.find(uri)
-            if result:
-                    if not isinstance(result, (list, tuple)):
-                            result = [result]
-                    result = list(os.path.realpath(path) for path in result)
-                    path=result[0]
-            else:
-                    sUrl = settings.STATIC_URL        # Typically /static/
-                    sRoot = settings.STATIC_ROOT      # Typically /home/userX/project_static/
-                    mUrl = settings.MEDIA_URL         # Typically /media/
-                    mRoot = settings.MEDIA_ROOT       # Typically /home/userX/project_static/media/
-
-                    if uri.startswith(mUrl):
-                            path = os.path.join(mRoot, uri.replace(mUrl, ""))
-                    elif uri.startswith(sUrl):
-                            path = os.path.join(sRoot, uri.replace(sUrl, ""))
-                    else:
-                            return uri
-
-            # make sure that file exists
-            if not os.path.isfile(path):
-                    raise Exception(
-                            'media URI must start with %s or %s' % (sUrl, mUrl)
-                    )
-            return path
+        return resolve_pdf_uri(uri)
 
     # @pdf_decorator(pdfname='new_filename.pdf')
     def get(self, request, *args, **kwargs):
@@ -522,43 +529,16 @@ class SaleInvoicePdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 link_callback=self.link_callback    
             )
             return response
-        except:
-            pass
+        except Exception as e:
+            log_error(logger, e, '[%s] error generando PDF usuario=%s', __name__, request.user)
+            messages.error(request, 'No se pudo generar el PDF. Intenta de nuevo o avisa al administrador.')
         return HttpResponseRedirect(reverse_lazy('crud:sale_list'))
 
 class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     permission_required = 'add_sale'
 
     def link_callback(self, uri, rel):
-            """
-            Convert HTML URIs to absolute system paths so xhtml2pdf can access those
-            resources
-            """
-            result = finders.find(uri)
-            if result:
-                    if not isinstance(result, (list, tuple)):
-                            result = [result]
-                    result = list(os.path.realpath(path) for path in result)
-                    path=result[0]
-            else:
-                    sUrl = settings.STATIC_URL        # Typically /static/
-                    sRoot = settings.STATIC_ROOT      # Typically /home/userX/project_static/
-                    mUrl = settings.MEDIA_URL         # Typically /media/
-                    mRoot = settings.MEDIA_ROOT       # Typically /home/userX/project_static/media/
-
-                    if uri.startswith(mUrl):
-                            path = os.path.join(mRoot, uri.replace(mUrl, ""))
-                    elif uri.startswith(sUrl):
-                            path = os.path.join(sRoot, uri.replace(sUrl, ""))
-                    else:
-                            return uri
-
-            # make sure that file exists
-            if not os.path.isfile(path):
-                    raise Exception(
-                            'media URI must start with %s or %s' % (sUrl, mUrl)
-                    )
-            return path
+        return resolve_pdf_uri(uri)
 
     def getByPayMethod(self, start, end, exchange_rate=1.0):
         data = []
@@ -639,8 +619,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 data.append(result)
                 
         except Exception as e:
-            print(f"Error generando payment methods report: {e}")
-            pass
+            logger.exception('[%s] error generando reporte por método de pago', __name__)
 
         return data, round(grand_total_usd, 2)
 
@@ -685,7 +664,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 'totalPayments': round(totalPayments, 2),
             }
         except Exception as e:
-            print(f"Error: {e}")
+            logger.exception('[%s] error generando reporte por tipo de venta', __name__)
             
         return data
 
@@ -701,8 +680,8 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     'discount': float(s.discount)
                 }
                 data.append(info)
-        except:
-            pass
+        except Exception:
+            logger.exception('[%s] error armando datos del reporte', __name__)
         return data
 
     def getPayments(self, start, end):
@@ -728,10 +707,10 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     'quantityBs': quantityBs
                 }
                 data.append(detail)
-        except:
-            pass
+        except Exception:
+            logger.exception('[%s] error armando datos del reporte', __name__)
         return data
-    
+
     def getCashMovements(self, start, end, exchange_rate):
         data = []
         try:
@@ -800,56 +779,44 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             }
             
         except Exception as e:
+            logger.exception('[%s] error generando reporte de movimientos de caja', __name__)
             return {'movements': [], 'totals': {}}
     
     def getByProducts(self, start, end):
         data = []
         try:
-            allSales = DetSale.objects.filter(sale__datejoined__gte=start, sale__datejoined__lte=end).exclude(sale__status=2)
-            
-            codes = []
-            for i in allSales:
-                item = i.toJSON()
-                code = {
-                    'code': item['prod']['code']
-                }
-                if not code in codes:
-                    codes.append(code)
+            allSales = DetSale.objects.filter(
+                sale__datejoined__gte=start, sale__datejoined__lte=end
+            ).exclude(sale__status=2).select_related('prod__type_product')
 
-            totalGeneral = 0
-            quantityGeneral = 0
-            for i in codes:
-                quantity = 0
-                prod = 'details'
-                price = 0
-                total = 0
-                for sale in allSales:
-                    s = sale.toJSON()
-                    if s['prod']['code'] == i['code']:
-                        quantity += float(s['quantity'])
-                        prod = s['prod']['product'] + ' ' + s['prod']['type_product']['name']
-                        price = float(s['prod']['price_dl'])
-                        cost = float(s['prod']['cost'])
-                        gain = float(s['prod']['price_dl']) - float(s['prod']['cost'])
-                        totalQuantity = float(price) * float(s['quantity'])
-                        total += totalQuantity
-                    else:
-                        pass
-                product = {
-                    'code': i['code'],
-                    'quantity': quantity,
-                    'prod': prod,
-                    'cost': cost,
-                    'price': price,
-                    'total_dl': price * quantity,
-                    'gain': (price - cost) * quantity,
-                    'total': total,
-                }
-                data.append(product)
-        except:
-            pass
+            # Una sola pasada: acumula por código de producto (en orden de aparición)
+            acc = {}
+            for d in allSales:
+                p = d.prod
+                qty = float(d.quantity)
+                price = float(p.price_dl)
+                row = acc.setdefault(p.code, {'quantity': 0.0, 'total': 0.0})
+                row['quantity'] += qty
+                row['prod'] = p.product + ' ' + p.type_product.name
+                row['price'] = price
+                row['cost'] = float(p.cost)
+                row['total'] += price * qty
+
+            for code, row in acc.items():
+                data.append({
+                    'code': code,
+                    'quantity': row['quantity'],
+                    'prod': row['prod'],
+                    'cost': row['cost'],
+                    'price': row['price'],
+                    'total_dl': row['price'] * row['quantity'],
+                    'gain': (row['price'] - row['cost']) * row['quantity'],
+                    'total': row['total'],
+                })
+        except Exception:
+            logger.exception('[%s] error armando datos del reporte', __name__)
         return data
-    
+
     # @pdf_decorator(pdfname='new_filename.pdf')
     def get(self, request, *args, **kwargs):
         try:
@@ -859,6 +826,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             discountSales = []
             payments = []
             movements = {'movements': [], 'total_mov_caja': 0}
+            grand_total = 0
 
             dolar = Dolar.objects.get(pk=1)
             dl = float(dolar.dolar)
@@ -941,7 +909,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 'totalPSales': totalPSales,
                 'comp': dataCompany,
                 'url': getStaticUrl(),
-                'icon': server_url + 'media/img/logo/logo.png',
+                'icon': server_url + '/media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')
@@ -951,7 +919,8 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 link_callback=self.link_callback    
             )
             return response
-        except:
-            pass
+        except Exception as e:
+            log_error(logger, e, '[%s] error generando PDF usuario=%s', __name__, request.user)
+            messages.error(request, 'No se pudo generar el PDF. Intenta de nuevo o avisa al administrador.')
         return HttpResponseRedirect(reverse_lazy('crud:sale_list'))
 

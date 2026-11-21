@@ -24,12 +24,15 @@ from xhtml2pdf import pisa
 # from django_xhtml2pdf.utils import pdf_decorator
 from django.contrib.staticfiles import finders
 
+from django.contrib import messages
+import logging
+logger = logging.getLogger(__name__)
+
 class CashMovementView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     model = CashMovement
     template_name = 'cashMovement/list.html'
     permission_required = 'view_cashmovement'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -52,8 +55,7 @@ class CashMovementView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     item['date_time'] = hora_local.strftime('%d-%m-%Y %I:%M %p')
                     data.append(item)
             elif action == 'delete':
-                group = request.user.groups.first()
-                if group.id != 1:
+                if not request.user.is_superuser:
                     data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
                 else:
                     with transaction.atomic():
@@ -63,7 +65,8 @@ class CashMovementView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
     
     def get_context_data(self, **kwargs):

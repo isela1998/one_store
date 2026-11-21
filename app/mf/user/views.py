@@ -4,7 +4,8 @@ from django.shortcuts import render
 from django.contrib.auth import *
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.http import JsonResponse
+from django.contrib import messages
+from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -16,13 +17,22 @@ from mf.crud.functions import *
 
 from mf.user.models import User
 
-class UserListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
+import logging
+logger = logging.getLogger(__name__)
+
+class UserListView(LoginRequiredMixin, TemplateView):
     model = User
     template_name = 'user/list.html'
-    permission_required = 'view_user'
+    permission_required = 'view_user', 'add_user', 'change_user', 'delete_user'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
+        # Solo los superusuarios (grupo "Todos los permisos") gestionan usuarios.
+        # Sin sesión se deja pasar para que LoginRequiredMixin redirija al login.
+        if request.user.is_authenticated and not request.user.is_superuser:
+            if request.method == 'POST':
+                return JsonResponse({'error': 'Disculpe, usted no tiene permisos para ejecutar esta acción'})
+            messages.error(request, 'Acceso Denegado. No tiene permisos para entrar a ese módulo')
+            return HttpResponseRedirect(reverse_lazy('crud:dashboard'))
         return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
@@ -31,15 +41,6 @@ class UserListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
         try:
             db = 'default'
             action = request.POST['action']
-            perm = {'add': 'add_user', 'edit': 'change_user', 'delete': 'delete_user'}.get(action)
-            if perm and not ValidatePermissions([perm], request.user.groups.first()):
-                return JsonResponse({'error': 'Disculpe, usted no tiene permisos para ejecutar esta acción'})
-            if action in ('edit', 'delete') and str(request.POST.get('id')) == '1':
-                return JsonResponse({'error': 'Este usuario no puede ser modificado'})
-            if action == 'delete' and str(request.POST.get('id')) == str(request.user.pk):
-                return JsonResponse({'error': 'No puede eliminar su propio usuario'})
-            if action in ('add', 'edit') and request.POST.get('group') == '1' and not request.user.is_superuser:
-                return JsonResponse({'error': 'Solo un administrador puede asignar el grupo de administrador'})
             if action == 'searchdata':
                 data = []
                 for i in User.objects.all().exclude(pk=1):
@@ -80,11 +81,14 @@ class UserListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
                 u.groups.clear()
                 u.groups.add(request.POST['group'])
             elif action == 'delete':
+                if str(request.user.pk) == str(request.POST['id']):
+                    raise UserError('No puedes eliminar tu propio usuario')
                 User.objects.get(pk=request.POST['id']).delete()
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):

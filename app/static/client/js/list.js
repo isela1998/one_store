@@ -31,10 +31,10 @@ function getData() {
       $('#data').removeClass('dataTables_filter');
     },
     columns: [
-      { data: 'names' },
+      { data: 'names', render: $.fn.dataTable.render.text() },
       { data: 'ci' },
-      { data: 'address' },
-      { data: 'contact' },
+      { data: 'address', render: $.fn.dataTable.render.text() },
+      { data: 'contact', render: $.fn.dataTable.render.text() },
       { data: 'contact' },
     ],
     columnDefs: [
@@ -42,7 +42,7 @@ function getData() {
         targets: [-4],
         orderable: true,
         render: function (data, type, row) {
-          let client = row.identity + '-' + data;
+          let client = escapeHtml(row.identity) + '-' + escapeHtml(data);
           return client;
         },
       },

@@ -12,11 +12,13 @@ from mf.crud.models import Client
 from mf.crud.forms import ClientForm
 from mf.crud.functions import *
 
+import logging
+logger = logging.getLogger(__name__)
+
 class ClientView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     template_name = 'client/list.html'
     permission_required = 'view_client'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -71,7 +73,8 @@ class ClientView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):

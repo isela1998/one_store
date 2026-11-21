@@ -28,11 +28,11 @@ function getData() {
       dataSrc: '',
     },
     columns: [
-      { data: 'code' },
-      { data: 'category.name' },
-      { data: 'type_product.name' },
+      { data: 'code', render: $.fn.dataTable.render.text() },
+      { data: 'category.name', render: $.fn.dataTable.render.text() },
+      { data: 'type_product.name', render: $.fn.dataTable.render.text() },
       { data: 'product' },
-      { data: 'description' },
+      { data: 'description', render: $.fn.dataTable.render.text() },
       { data: 'quantity' },
       { data: 'cost' },
       { data: 'price_dl' },
@@ -52,7 +52,7 @@ function getData() {
         targets: [-7],
         orderable: true,
         render: function (data, type, row) {
-          let quantity = '<span>' + row.brand + ' ' + data + '</span>';
+          let quantity = '<span>' + escapeHtml(row.brand) + ' ' + escapeHtml(data) + '</span>';
           return quantity;
         },
       },
@@ -152,6 +152,7 @@ $(function () {
       $('input[name="brand"]').val(data.brand);
       $('textarea[name="description"]').val(data.description);
       $('input[name="quantity"]').val(data.quantity);
+      $('.formProduct').data('qtyOriginal', data.quantity);
       $('input[name="cost"]').val(data.cost);
       $('input[name="price_dl"]').val(data.price_dl);
       $('input[name="price_bs"]').val(data.price_bs);
@@ -193,6 +194,10 @@ $(function () {
     e.preventDefault();
     convertToUpperCase();
     let parameters = new FormData(this);
+    let qtyOriginal = $(this).data('qtyOriginal');
+    if (parameters.get('action') === 'edit' && qtyOriginal !== undefined) {
+      parameters.append('quantity_original', qtyOriginal);
+    }
     submit_with_ajax(window.location.pathname, parameters, function () {
       $('#modalProduct').modal('hide');
       // alertSweetSuccess('Listado de Productos actualizado');

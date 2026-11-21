@@ -13,11 +13,13 @@ from mf.crud.models import Category, Dolar
 from mf.crud.forms import CategoryForm
 from mf.crud.functions import *
 
+import logging
+logger = logging.getLogger(__name__)
+
 class CategoryListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     template_name = 'category/list.html'
     permission_required = 'view_category', 'add_category', 'change_category', 'delete_category'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         request = get_current_request()
         return super().dispatch(request, *args, **kwargs)
@@ -28,9 +30,6 @@ class CategoryListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView
         try:
             sede = request.POST['sede']
             action = request.POST['action']
-            perm = {'add': 'add_category', 'edit': 'change_category', 'delete': 'delete_category'}.get(action)
-            if perm and not ValidatePermissions([perm], request.user.groups.first()):
-                return JsonResponse({'error': 'Disculpe, usted no tiene permisos para ejecutar esta acción'})
             if action == 'searchdata':
                 data = []
                 for i in Category.objects.using(db).all():
@@ -50,7 +49,8 @@ class CategoryListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):

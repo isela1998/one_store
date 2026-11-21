@@ -11,11 +11,13 @@ from mf.crud.models import Method_pay
 from mf.crud.forms import MethodPayForm
 from mf.crud.functions import *
 
+import logging
+logger = logging.getLogger(__name__)
+
 class MethodListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     template_name = 'method/list.html'
     permission_required = 'view_method_pay', 'add_method_pay', 'change_method_pay', 'delete_method_pay'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -25,9 +27,6 @@ class MethodListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
         try:
             # sede = request.POST['sede']
             action = request.POST['action']
-            perm = {'add': 'add_method_pay', 'edit': 'change_method_pay', 'delete': 'delete_method_pay'}.get(action)
-            if perm and not ValidatePermissions([perm], request.user.groups.first()):
-                return JsonResponse({'error': 'Disculpe, usted no tiene permisos para ejecutar esta acción'})
             if action == 'searchdata':
                 data = []
                 for i in Method_pay.objects.using(db).all().exclude(pk=1):
@@ -54,7 +53,8 @@ class MethodListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):

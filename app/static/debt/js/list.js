@@ -28,7 +28,7 @@ function getData(start, end) {
     },
     columns: [
       { data: 'last_credit_date' },
-      { data: 'name' },
+      { data: 'name', render: $.fn.dataTable.render.text() },
       { data: 'totalDebt' },
       { data: 'id' },
     ],
@@ -100,7 +100,7 @@ function getData2(id) {
       { data: 'operation' },
       { data: 'datehour' },
       { data: 'quantity' },
-      { data: 'description' },
+      { data: 'description', render: $.fn.dataTable.render.text() },
     ],
     columnDefs: [
       {

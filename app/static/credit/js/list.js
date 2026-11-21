@@ -52,7 +52,7 @@ function getData(start, end, all, include) {
       {
         targets: [-4],
         render: function (data, type, row) {
-          let client = `<i>${data.names} (${data.ci}) ${data.contact}</i>`;
+          let client = `<i>${escapeHtml(data.names)} (${escapeHtml(data.ci)}) ${escapeHtml(data.contact)}</i>`;
           return client;
         },
       },
@@ -117,7 +117,7 @@ function getData2(id) {
       { data: 'datehour' },
       { data: 'quantity' },
       { data: 'quantitybs' },
-      { data: 'description' },
+      { data: 'description', render: $.fn.dataTable.render.text() },
       { data: 'sale.id' },
       { data: 'id' },
     ],

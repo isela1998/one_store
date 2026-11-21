@@ -14,12 +14,14 @@ from mf.crud.functions import *
 from config.settings import MEDIA_URL
 from django.conf import settings
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class CompanyInfoView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     template_name = 'companyInfo/list.html'
     permission_required = 'view_companyinfo'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -37,7 +39,6 @@ class CompanyInfoView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
                 if(authorized == False):
                     data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
                 elif(authorized == True):
-                    u = User.objects.get(pk=request.user.pk)
                     c = CompanyInfo.objects.get(pk=1)
                     c.name = request.POST['name']
                     c.comercialName = request.POST['comercialName']
@@ -49,13 +50,12 @@ class CompanyInfoView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
                     c.services = request.POST['services']
                     if request.FILES:
                         c.logo = request.FILES['logo']
-                        u.image = c.logo
-                    u.save()
                     c.save()
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):

@@ -29,10 +29,10 @@ function getData(start, end) {
     columns: [
       { data: 'date_time' },
       { data: 'tipo' },
-      { data: 'method_pay.name' },
+      { data: 'method_pay.name', render: $.fn.dataTable.render.text() },
       { data: 'amount_dl' },
       { data: 'amount_bs' },
-      { data: 'description' },
+      { data: 'description', render: $.fn.dataTable.render.text() },
       { data: 'status' },
       { data: 'id' },
     ],

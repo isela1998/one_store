@@ -1,9 +1,8 @@
 env
 app/manage.py
-venv/
-.env
 __pycache__/
-*.pyc
-.vs/
+*.py[cod]
+.env
+env/
+venv/
 staticfiles/
-db.sqlite3

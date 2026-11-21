@@ -11,6 +11,9 @@ from mf.models import BaseModel
 from django.utils.dateparse import parse_datetime
 import pytz
 
+def today_str():
+    return date.today().strftime('%Y-%m-%d')
+
 IDENTITY_CHOICES = [
     ('V', 'V'),
     ('J', 'J'),
@@ -37,7 +40,7 @@ TIPO_CHOICES = [
 class Permisology(models.Model):
     name = models.CharField(max_length=255, verbose_name='Permiso')
     description = models.CharField(max_length=255, verbose_name='Descripción')
-    day = models.DateField(max_length=50, default=date.today().strftime('%Y-%m-%d'), verbose_name='Fecha de pago')
+    day = models.DateField(max_length=50, default=date.today, verbose_name='Fecha de pago')
     color = models.CharField(max_length=250, default='#007bff', verbose_name='Color')
 
     def __str__(self):
@@ -80,7 +83,7 @@ class CompanyInfo(models.Model):
 class Eventos(models.Model):
     name = models.CharField(max_length=255, verbose_name='Evento')
     description = models.CharField(max_length=255, verbose_name='Descripción')
-    day = models.DateField(max_length=50, default=date.today().strftime('%Y-%m-%d'), verbose_name='Fecha')
+    day = models.DateField(max_length=50, default=date.today, verbose_name='Fecha')
     color = models.CharField(max_length=250, default='#007bff', verbose_name='Color')
 
     def __str__(self):
@@ -100,7 +103,7 @@ class Dolar(models.Model):
     dolar = models.DecimalField(default=0.00, max_digits=30, decimal_places=2)
 
     def __str__(self):
-        return self.dolar
+        return str(self.dolar)
     
     def toJSON(self):
         item = model_to_dict(self)
@@ -165,7 +168,7 @@ class Product(models.Model):
     price_bs = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Precio bolivares")
     gain = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Ganancia")
     quantity = models.DecimalField(default=0, max_digits=30, decimal_places=3, verbose_name="Cantidad")
-    status = models.IntegerField(default=1)
+    status = models.IntegerField(default=1, db_index=True)
 
     def __str__(self):
         return '{}.{}.{}'.format(self.brand, self.product, self.type_product.name)
@@ -196,7 +199,7 @@ class Client(models.Model):
     contact = models.CharField(max_length=50, verbose_name='Teléfono')
 
     def __str__(self):
-        client = self.names + ' ' + self.identity.identity + '-' + self.ci
+        client = self.names + ' ' + self.identity + '-' + self.ci
         return client
 
     def toJSON(self):
@@ -227,8 +230,8 @@ class Method_pay(models.Model):
 class Sale(models.Model):
     user = models.CharField(max_length=255, default='NA', verbose_name="Vendedor")
     client = models.ForeignKey(Client, on_delete=models.PROTECT)
-    datejoined = models.DateField(max_length=10, default=date.today().strftime('%Y-%m-%d'), verbose_name="Fecha")
-    datehour = models.CharField(default=date.today().strftime('%Y-%m-%d'), max_length=30, verbose_name="Fecha")
+    datejoined = models.DateField(db_index=True, max_length=10, default=date.today, verbose_name="Fecha")
+    datehour = models.CharField(default=today_str, max_length=30, verbose_name="Fecha")
     invoice_number = models.CharField(max_length=255, default='00000000', verbose_name="Nº Factura")
     control_number = models.CharField(max_length=255, default='00000000', verbose_name="Nº de Control")
     subtotal = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Subtotal $")
@@ -245,7 +248,10 @@ class Sale(models.Model):
     received2 = models.DecimalField(default=0, max_digits=100, decimal_places=2, verbose_name='Entrada (3)')
     description = models.CharField(max_length=255, verbose_name='Notas')
     rate = models.DecimalField(default=0.00, max_digits=30, decimal_places=2)
-    status = models.IntegerField(default=0)
+    status = models.IntegerField(default=0, db_index=True)
+    cancelled_by = models.CharField(max_length=255, null=True, blank=True, verbose_name='Anulada por')
+    cancelled_at = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de anulación')
+    cancel_reason = models.CharField(max_length=255, null=True, blank=True, verbose_name='Motivo de anulación')
 
     def __str__(self):
         return '{}.{}'.format(self.client.names, self.client.ci)
@@ -266,6 +272,7 @@ class Sale(models.Model):
         item['received2'] = format(self.received2, '.2f')
         item['rate'] = format(self.rate, '.2f')
         item['det'] = [i.toJSON() for i in self.detsale_set.all()]
+        item['cancelled_at'] = timezone.localtime(self.cancelled_at).strftime('%d/%m/%Y %I:%M %p') if self.cancelled_at else ''
         return item
     
     class Meta:
@@ -277,18 +284,18 @@ class DetSale(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE)
     prod = models.ForeignKey(Product, on_delete=models.PROTECT)
     price = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name='Precio Producto $')
-    quantity = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name='Cantidad')
+    quantity = models.DecimalField(default=0.00, max_digits=30, decimal_places=3, verbose_name='Cantidad')
     total = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name='Total')
     rate = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name='Tasa $')
 
     def __str__(self):
-        return self.prod.name
+        return str(self.prod)
     
     def toJSON(self):
         item = model_to_dict(self, exclude=['sale'])
         item['prod'] = self.prod.toJSON()
         item['price'] = format(self.price, '.2f')
-        item['quantity'] = format(self.quantity, '.0f')
+        item['quantity'] = format(self.quantity, '.0f') if self.quantity % 1 == 0 else format(self.quantity.normalize(), 'f')
         item['total'] = format(self.total, '.2f')
         item['rate'] = format(self.rate, '.2f')
         return item
@@ -300,8 +307,8 @@ class DetSale(models.Model):
 
 class Credit(models.Model):
     client = models.ForeignKey(Client, on_delete=models.PROTECT)
-    last_credit_date = models.DateField(max_length=10, default=date.today().strftime('%Y-%m-%d'), verbose_name="Fecha")
-    datehour = models.CharField(default=date.today().strftime('%Y-%m-%d'), max_length=30, verbose_name="Fecha")
+    last_credit_date = models.DateField(db_index=True, max_length=10, default=date.today, verbose_name="Fecha")
+    datehour = models.CharField(default=today_str, max_length=30, verbose_name="Fecha")
     totalDebt = models.DecimalField(default=0.00, max_digits=30, decimal_places=2)
 
     def __str__(self):
@@ -322,8 +329,8 @@ class Credit(models.Model):
 class DetCredit(models.Model):
     credit = models.ForeignKey(Credit, on_delete=models.CASCADE)
     sale = models.ForeignKey(Sale, on_delete=models.PROTECT, null=True, blank=True)
-    last_credit_date = models.DateField(max_length=10, default=date.today().strftime('%Y-%m-%d'), verbose_name="Fecha")
-    datehour = models.CharField(default=date.today().strftime('%Y-%m-%d'), max_length=30, verbose_name="Fecha y Hora")
+    last_credit_date = models.DateField(db_index=True, max_length=10, default=date.today, verbose_name="Fecha")
+    datehour = models.CharField(default=today_str, max_length=30, verbose_name="Fecha y Hora")
     operation = models.CharField(max_length=2, default="+", verbose_name='Operación')
     method_pay = models.ForeignKey(Method_pay, on_delete=models.PROTECT, verbose_name="Método de pago")
     quantity = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name='Cantidad')
@@ -332,7 +339,7 @@ class DetCredit(models.Model):
     status = models.IntegerField(default=1)
 
     def __str__(self):
-        return self.credit.id
+        return 'Crédito {}'.format(self.credit_id)
     
     def toJSON(self):
         item = model_to_dict(self, exclude=['credit'])
@@ -352,7 +359,7 @@ class Budget(models.Model):
     user = models.CharField(max_length=255, default='NA', verbose_name="Vendedor")
     budget_number = models.CharField(max_length=255, default='00000000', verbose_name="Presupuesto Nº")
     client = models.ForeignKey(Client, on_delete=models.PROTECT)
-    datejoined = models.DateField(max_length=10, default=date.today().strftime('%Y-%m-%d'), verbose_name="Fecha")
+    datejoined = models.DateField(max_length=10, default=date.today, verbose_name="Fecha")
     subtotal = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Subtotal $")
     discount = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Descuento $")
     iva = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="IVA 16%")
@@ -389,7 +396,7 @@ class DetBudget(models.Model):
     rate = models.DecimalField(default=0.00, max_digits=30, decimal_places=22, verbose_name='Tasa $ Calculada')
 
     def __str__(self):
-        return self.prod.name
+        return str(self.prod)
     
     def toJSON(self):
         item = model_to_dict(self, exclude=['budget'])
@@ -408,8 +415,8 @@ class DetBudget(models.Model):
 class Debt(models.Model):
     name = models.CharField(max_length=255, verbose_name="Nombre/Razón Social")
     description = models.CharField(max_length=255, verbose_name='Descripción')
-    last_credit_date = models.DateField(max_length=10, default=date.today().strftime('%Y-%m-%d'), verbose_name="Fecha")
-    datehour = models.CharField(default=date.today().strftime('%Y-%m-%d'), max_length=30, verbose_name="Fecha")
+    last_credit_date = models.DateField(max_length=10, default=date.today, verbose_name="Fecha")
+    datehour = models.CharField(default=today_str, max_length=30, verbose_name="Fecha")
     totalDebt = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Total $")
 
     def __str__(self):
@@ -428,8 +435,8 @@ class Debt(models.Model):
 
 class DetDebt(models.Model):
     debt = models.ForeignKey(Debt, on_delete=models.CASCADE)
-    last_debt_date = models.DateField(max_length=10, default=date.today().strftime('%Y-%m-%d'), verbose_name="Fecha")
-    datehour = models.CharField(default=date.today().strftime('%Y-%m-%d'), max_length=30, verbose_name="Fecha y Hora")
+    last_debt_date = models.DateField(max_length=10, default=date.today, verbose_name="Fecha")
+    datehour = models.CharField(default=today_str, max_length=30, verbose_name="Fecha y Hora")
     operation = models.CharField(max_length=2, default="+", verbose_name='Operación')
     quantity = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name='Cantidad')
     description = models.CharField(max_length=255, verbose_name='Descripción')
@@ -449,16 +456,16 @@ class DetDebt(models.Model):
 
 class CashMovement(models.Model):
     user = models.ForeignKey(User, on_delete=models.PROTECT, verbose_name="Registrado por")
-    date_time = models.DateTimeField(auto_now_add=True)
+    date_time = models.DateTimeField(auto_now_add=True, db_index=True)
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
     method_pay = models.ForeignKey(Method_pay, on_delete=models.PROTECT, verbose_name="Método de pago")
     amount_bs = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Cantidad")
     amount_dl = models.DecimalField(default=0.00, max_digits=30, decimal_places=2, verbose_name="Cantidad dólares")
     description = models.CharField(max_length=255, verbose_name='Descripción')
-    status = models.IntegerField(default=1)
+    status = models.IntegerField(default=1, db_index=True)
     
     def __str__(self):
-        return self.date_time
+        return str(self.date_time)
     
     def toJSON(self):
         item = model_to_dict(self)

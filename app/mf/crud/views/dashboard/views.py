@@ -16,19 +16,21 @@ from datetime import datetime, timedelta
 
 from mf.crud.models import Dolar, Product, Sale, DetSale, DetCredit, Credit
 from django.db.models.functions import Coalesce
-from django.db.models import Sum
+from django.db.models import F, Sum
+from decimal import Decimal
 
 from mf.crud.functions import *
 
-import math
 import os
 from pathlib import Path
+
+import logging
+logger = logging.getLogger(__name__)
 
 class DashboardView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     template_name = 'dashboard.html'
     permission_required = 'view_sale'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -38,12 +40,10 @@ class DashboardView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
             db = 'default'
             action = request.POST['action']
             if action == 'get_graph_sales':
-                group = request.user.groups.first()
-                if group.id == 1:
+                if request.user.is_superuser:
                     data = self.get_graph_sales(db)
             elif action == 'get_graph_products':
-                group = request.user.groups.first()
-                if group.id == 1:
+                if request.user.is_superuser:
                     data = {
                         'name': 'Ventas',
                         'text': 'Productos',
@@ -54,34 +54,31 @@ class DashboardView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
                 perms = ['change_dolar',]
                 group = request.user.groups.first()
                 authorized = ValidatePermissions(perms, group)
-                if not authorized:
+                if(authorized == False):
                     data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
-                elif ',' in request.POST['dolar']:
+                if ',' in request.POST['dolar']:  
                     data['error'] = 'Por favor, utiliza punto (.) en lugar de coma (,)'
-                else:
+                elif(authorized == True):
                     generalRate = float(request.POST['dolar'])
-                    if not math.isfinite(generalRate) or generalRate <= 0:
-                        data['error'] = 'La tasa debe ser un número mayor que cero'
-                    else:
-                        with transaction.atomic():
-                            dolar = Dolar.objects.get(pk=1)
-                            dolar.dolar = generalRate
-                            dolar.save()
-                            self.update_prices(generalRate)
+                    with transaction.atomic():
+                        dolar = Dolar.objects.select_for_update().get(pk=1)
+                        dolar.dolar = generalRate
+                        dolar.save()
+                        self.update_prices(generalRate)
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
     
     
     def update_prices(self, dl):
-        data = []
-        product = Product.objects.using('default').all()
-        for p in product:
-            p.price_bs = float(p.price_dl) * float(dl)
-            p.save()
-        return data
+        # Un único UPDATE que solo toca price_bs: no lee ni reescribe quantity,
+        # así una venta concurrente no se pierde.
+        Product.objects.using('default').update(
+            price_bs=F('price_dl') * Decimal(str(dl))
+        )
 
     def get_graph_sales(self, db):
         data_contado = []
@@ -118,7 +115,7 @@ class DashboardView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
 
                 
         except Exception as e:
-            print(f"Error en la gráfica: {e}")
+            logger.exception('[%s] error armando la gráfica de ventas', __name__)
             
         return [
             {
@@ -159,7 +156,7 @@ class DashboardView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
                     'y': float(item['total_qty']) 
                 })
         except Exception as e:
-            print(f"Error en productos: {e}")
+            logger.exception('[%s] error armando la gráfica de productos', __name__)
             
         return data
 
