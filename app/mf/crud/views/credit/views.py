@@ -149,7 +149,6 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 else:
                     Credit.objects.using(db).get(pk=request.POST['id']).delete()
             elif action == 'deleteItem':
-                print('Entro en el delelte', request.POST)
                 group = request.user.groups.first()
                 if group.id != 1:
                     data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'

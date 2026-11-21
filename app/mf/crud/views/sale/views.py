@@ -102,7 +102,7 @@ class SaleListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
         context['q_events'] = get_q_events_today()
         return context
 
-class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
+class SaleCreateView(LoginRequiredMixin, ValidatePermissionMixin, CreateView):
     model = Sale
     form_class = SaleForm
     template_name = 'sale/create.html'
@@ -290,7 +290,6 @@ class SaleCreateView(CreateView, LoginRequiredMixin, ValidatePermissionMixin):
             else:
                 data['error'] = 'No ha ingresado a ninguna opción'
         except Exception as e:
-            print(e)
             data['error'] = str(e)
         return JsonResponse(data, safe=False)
 
@@ -506,7 +505,6 @@ class SaleInvoicePdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             sale = Sale.objects.using(db).get(pk=self.kwargs['s'])
 
             server_url = request.build_absolute_uri('/')
-            print('URL ESSS' + server_url)
 
             dataCompany = getCompanyData()
             context = {
@@ -737,9 +735,6 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     def getCashMovements(self, start, end, exchange_rate):
         data = []
         try:
-            todos = CashMovement.objects.all().values('tipo', 'amount_bs', 'status', 'date_time__date')
-            print("LO QUE REALMENTE HAY EN CAJA:", list(todos))
-
             allMovements = CashMovement.objects.filter(
                 date_time__date__gte=start, 
                 date_time__date__lte=end, 
@@ -805,7 +800,6 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             }
             
         except Exception as e:
-            print(f"Error en getCashMovementsReport: {e}")
             return {'movements': [], 'totals': {}}
     
     def getByProducts(self, start, end):
@@ -864,6 +858,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             byProducts = []
             discountSales = []
             payments = []
+            movements = {'movements': [], 'total_mov_caja': 0}
 
             dolar = Dolar.objects.get(pk=1)
             dl = float(dolar.dolar)
@@ -878,8 +873,6 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             elif self.kwargs['type'] == 2:
                 template = get_template('sale/reportProducts.html')
                 byProducts = self.getByProducts(self.kwargs['start'], self.kwargs['end'])
-
-            print(movements)
 
             totals = 0
             totalsBs = 0
@@ -948,7 +941,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 'totalPSales': totalPSales,
                 'comp': dataCompany,
                 'url': getStaticUrl(),
-                'icon': server_url + '/media/img/logo/logo.png',
+                'icon': server_url + 'media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')

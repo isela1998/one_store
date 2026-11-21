@@ -25,6 +25,9 @@ class MethodListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
         try:
             # sede = request.POST['sede']
             action = request.POST['action']
+            perm = {'add': 'add_method_pay', 'edit': 'change_method_pay', 'delete': 'delete_method_pay'}.get(action)
+            if perm and not ValidatePermissions([perm], request.user.groups.first()):
+                return JsonResponse({'error': 'Disculpe, usted no tiene permisos para ejecutar esta acción'})
             if action == 'searchdata':
                 data = []
                 for i in Method_pay.objects.using(db).all().exclude(pk=1):

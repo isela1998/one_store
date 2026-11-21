@@ -28,6 +28,9 @@ class BrandListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
         try:
             sede = request.POST['sede']
             action = request.POST['action']
+            perm = {'add': 'add_brand', 'edit': 'change_brand', 'delete': 'delete_brand'}.get(action)
+            if perm and not ValidatePermissions([perm], request.user.groups.first()):
+                return JsonResponse({'error': 'Disculpe, usted no tiene permisos para ejecutar esta acción'})
             if action == 'searchdata':
                 data = []
                 for i in Brand.objects.using(db).all():

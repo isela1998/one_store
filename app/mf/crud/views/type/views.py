@@ -25,6 +25,9 @@ class TypeListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
         try:
             sede = request.POST['sede']
             action = request.POST['action']
+            perm = {'add': 'add_type_product', 'edit': 'change_type_product', 'delete': 'delete_type_product'}.get(action)
+            if perm and not ValidatePermissions([perm], request.user.groups.first()):
+                return JsonResponse({'error': 'Disculpe, usted no tiene permisos para ejecutar esta acción'})
             if action == 'searchdata':
                 data = []
                 for i in Type_product.objects.using(db).all():

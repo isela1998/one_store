@@ -112,7 +112,7 @@ class BudgetInvoicePdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView
                 'sale': budget,
                 'comp': dataCompany,
                 'url': getStaticUrl(),
-                'icon': 'https://jeantren-86cc3b8c232c.herokuapp.com/media/img/logo/logo.png',
+                'icon': server_url + 'media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')

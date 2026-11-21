@@ -20,6 +20,7 @@ from django.db.models import Sum
 
 from mf.crud.functions import *
 
+import math
 import os
 from pathlib import Path
 
@@ -34,7 +35,6 @@ class DashboardView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     def post(self, request, *args, **kwargs):
         data = {}
         try:
-            print(request)
             db = 'default'
             action = request.POST['action']
             if action == 'get_graph_sales':
@@ -54,17 +54,20 @@ class DashboardView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
                 perms = ['change_dolar',]
                 group = request.user.groups.first()
                 authorized = ValidatePermissions(perms, group)
-                if(authorized == False):
+                if not authorized:
                     data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
-                if ',' in request.POST['dolar']:  
+                elif ',' in request.POST['dolar']:
                     data['error'] = 'Por favor, utiliza punto (.) en lugar de coma (,)'
-                elif(authorized == True):
+                else:
                     generalRate = float(request.POST['dolar'])
-                    with transaction.atomic():
-                        dolar = Dolar.objects.get(pk=1)
-                        dolar.dolar = float(request.POST['dolar'])
-                        dolar.save()
-                    self.update_prices(generalRate)
+                    if not math.isfinite(generalRate) or generalRate <= 0:
+                        data['error'] = 'La tasa debe ser un número mayor que cero'
+                    else:
+                        with transaction.atomic():
+                            dolar = Dolar.objects.get(pk=1)
+                            dolar.dolar = generalRate
+                            dolar.save()
+                            self.update_prices(generalRate)
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:

@@ -16,10 +16,10 @@ from mf.crud.functions import *
 
 from mf.user.models import User
 
-class UserListView(LoginRequiredMixin, TemplateView):
+class UserListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     model = User
     template_name = 'user/list.html'
-    permission_required = 'view_user', 'add_user', 'change_user', 'delete_user'
+    permission_required = 'view_user'
 
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
@@ -31,6 +31,15 @@ class UserListView(LoginRequiredMixin, TemplateView):
         try:
             db = 'default'
             action = request.POST['action']
+            perm = {'add': 'add_user', 'edit': 'change_user', 'delete': 'delete_user'}.get(action)
+            if perm and not ValidatePermissions([perm], request.user.groups.first()):
+                return JsonResponse({'error': 'Disculpe, usted no tiene permisos para ejecutar esta acción'})
+            if action in ('edit', 'delete') and str(request.POST.get('id')) == '1':
+                return JsonResponse({'error': 'Este usuario no puede ser modificado'})
+            if action == 'delete' and str(request.POST.get('id')) == str(request.user.pk):
+                return JsonResponse({'error': 'No puede eliminar su propio usuario'})
+            if action in ('add', 'edit') and request.POST.get('group') == '1' and not request.user.is_superuser:
+                return JsonResponse({'error': 'Solo un administrador puede asignar el grupo de administrador'})
             if action == 'searchdata':
                 data = []
                 for i in User.objects.all().exclude(pk=1):
@@ -59,7 +68,8 @@ class UserListView(LoginRequiredMixin, TemplateView):
                 u.first_name = request.POST['first_name']
                 u.last_name = request.POST['last_name']
                 u.username = request.POST['username']
-                u.set_password(request.POST['password'])
+                if request.POST.get('password'):
+                    u.set_password(request.POST['password'])
                 
                 if request.POST['group'] == '1':
                     u.is_superuser = True

@@ -61,7 +61,7 @@ class DebtListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 newDebt.save()
 
                 newDetDebt = DetDebt()
-                newDetDebt.last_credit_date = request.POST['last_credit_date']
+                newDetDebt.last_debt_date = request.POST['last_credit_date']
                 newDetDebt.datehour = newDebt.datehour
                 newDetDebt.debt_id = newDebt.id
                 newDetDebt.operation = '+'
