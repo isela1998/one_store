@@ -14,12 +14,14 @@ from mf.crud.forms import EventosForm
 from mf.crud.models import Eventos
 from mf.crud.functions import *
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class EventosListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     template_name = 'calendar/calendar.html'
     permission_required = 'view_eventos'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -58,8 +60,6 @@ class EventosListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
                     p.day = request.POST['day']
                     p.color = request.POST['css']
                     p.save(using='default')
-                    RegisterOperation(db, request.user.pk,
-                                      'Registró un nuevo evento en el calendario')
             elif action == 'delete':
                 perms = ['delete_eventos', ]
                 group = request.user.groups.first()
@@ -70,12 +70,11 @@ class EventosListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
                     p = Eventos.objects.using(
                         'default').get(pk=request.POST['id'])
                     p.delete()
-                    RegisterOperation(db, request.user.pk,
-                                      'Eliminó un evento del calendario')
             else:
                 data['error'] = "Ha ocurrido un error"
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):

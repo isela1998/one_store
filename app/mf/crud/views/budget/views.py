@@ -14,7 +14,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 
 from mf.crud.models import Budget, DetBudget
 from mf.crud.functions import *
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 
 import os
 from django.conf import settings
@@ -23,12 +23,15 @@ from xhtml2pdf import pisa
 # from django_xhtml2pdf.utils import pdf_decorator
 from django.contrib.staticfiles import finders
 
+from django.contrib import messages
+import logging
+logger = logging.getLogger(__name__)
+
 class BudgetListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     model = Budget
     template_name = 'budget/list.html'
     permission_required = 'view_sale'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -40,15 +43,20 @@ class BudgetListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             action = request.POST['action']
             if action == 'searchdata':
                 data = []
-                for i in Budget.objects.using(db).all():
+                budgets_qs = Budget.objects.using(db).select_related('client').prefetch_related(
+                    Prefetch('detbudget_set', queryset=DetBudget.objects.select_related('prod__category', 'prod__type_product'))
+                )
+                for i in budgets_qs:
                     item = i.toJSON()
                     data.append(item)
             elif action == 'delete':
+                require_perm(request.user, 'delete_budget')
                 Budget.objects.using(db).get(pk=request.POST['id']).delete()
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):
@@ -67,35 +75,7 @@ class BudgetInvoicePdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView
     permission_required = 'view_sale'
 
     def link_callback(self, uri, rel):
-            """
-            Convert HTML URIs to absolute system paths so xhtml2pdf can access those
-            resources
-            """
-            result = finders.find(uri)
-            if result:
-                    if not isinstance(result, (list, tuple)):
-                            result = [result]
-                    result = list(os.path.realpath(path) for path in result)
-                    path=result[0]
-            else:
-                    sUrl = settings.STATIC_URL        # Typically /static/
-                    sRoot = settings.STATIC_ROOT      # Typically /home/userX/project_static/
-                    mUrl = settings.MEDIA_URL         # Typically /media/
-                    mRoot = settings.MEDIA_ROOT       # Typically /home/userX/project_static/media/
-
-                    if uri.startswith(mUrl):
-                            path = os.path.join(mRoot, uri.replace(mUrl, ""))
-                    elif uri.startswith(sUrl):
-                            path = os.path.join(sRoot, uri.replace(sUrl, ""))
-                    else:
-                            return uri
-
-            # make sure that file exists
-            if not os.path.isfile(path):
-                    raise Exception(
-                            'media URI must start with %s or %s' % (sUrl, mUrl)
-                    )
-            return path
+        return resolve_pdf_uri(uri)
 
     # @pdf_decorator(pdfname='new_filename.pdf')
     def get(self, request, *args, **kwargs):
@@ -112,7 +92,7 @@ class BudgetInvoicePdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView
                 'sale': budget,
                 'comp': dataCompany,
                 'url': getStaticUrl(),
-                'icon': 'https://jeantren-86cc3b8c232c.herokuapp.com/media/img/logo/logo.png',
+                'icon': server_url + 'media/img/logo/logo.png',
             }
             html = template.render(context)
             response = HttpResponse(content_type='application/pdf')
@@ -123,7 +103,8 @@ class BudgetInvoicePdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView
                 link_callback=self.link_callback    
             )
             return response
-        except:
-            pass
+        except Exception as e:
+            log_error(logger, e, '[%s] error generando PDF usuario=%s', __name__, request.user)
+            messages.error(request, 'No se pudo generar el PDF. Intenta de nuevo o avisa al administrador.')
         return HttpResponseRedirect(reverse_lazy('crud:budget_list'))
 

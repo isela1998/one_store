@@ -1,5 +1,8 @@
 env
 app/manage.py
-app\config\__pycache__
-app/config/__pycache__
-app/config
+__pycache__/
+*.py[cod]
+.env
+env/
+venv/
+staticfiles/

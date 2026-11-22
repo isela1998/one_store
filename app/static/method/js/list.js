@@ -22,7 +22,7 @@ function getData() {
       },
       dataSrc: '',
     },
-    columns: [{ data: 'name' }, { data: 'type_symbol' }, { data: 'name' }],
+    columns: [{ data: 'name', render: $.fn.dataTable.render.text() }, { data: 'type_symbol' }, { data: 'name' }],
     dom: '<"myCustomClass"f>rt<"bottom"lp><"clear">',
     fnDrawCallback: function () {
       $("input[type='search']").attr('id', 'searchBox');

@@ -7,15 +7,16 @@ from django.db import transaction
 from datetime import date, datetime, timedelta
 import json
 from django.utils import timezone
+from decimal import Decimal, ROUND_HALF_UP
 
 
 from mf.crud.mixins import IsSuperuserMixin, ValidatePermissionMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from mf.crud.models import Credit, DetCredit, Method_pay
+from mf.crud.models import Credit, DetCredit, DetSale, Method_pay
 from mf.crud.forms import DetCreditForm
 from mf.crud.functions import *
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 
 import os
 from django.conf import settings
@@ -24,12 +25,31 @@ from xhtml2pdf import pisa
 # from django_xhtml2pdf.utils import pdf_decorator
 from django.contrib.staticfiles import finders
 
+from django.contrib import messages
+import logging
+logger = logging.getLogger(__name__)
+
+def _det_credit_relations(qs):
+    """Precarga las relaciones que usa DetCredit.toJSON() (evita consultas N+1)."""
+    return qs.select_related(
+        'method_pay', 'sale__client', 'sale__method_pay', 'sale__method_pay1', 'sale__method_pay2'
+    ).prefetch_related(
+        Prefetch('sale__detsale_set', queryset=DetSale.objects.select_related('prod__category', 'prod__type_product'))
+    )
+
+
+def _credit_relations(qs):
+    """Precarga las relaciones que usa Credit.toJSON() (evita consultas N+1)."""
+    return qs.select_related('client').prefetch_related(
+        Prefetch('detcredit_set', queryset=_det_credit_relations(DetCredit.objects.all()))
+    )
+
+
 class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     model = Credit
     template_name = 'credit/list.html'
     permission_required = 'view_credit'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -48,36 +68,37 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 
                 if all == 0:
                     if include == 0:
-                        for i in Credit.objects.filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']).exclude(totalDebt__lte=0):
+                        for i in _credit_relations(Credit.objects.filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']).exclude(totalDebt__lte=0)):
                             item = i.toJSON()
                             item['dl'] = float(dl_value)
                             item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
                             data.append(item)
                     if include == 1:
-                        for i in Credit.objects.filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end']):
+                        for i in _credit_relations(Credit.objects.filter(last_credit_date__gte=request.POST['start'], last_credit_date__lte=request.POST['end'])):
                             item = i.toJSON()
                             item['dl'] = float(dl_value)
                             item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
                             data.append(item)
                 if all == 1:
                     if include == 0:
-                        for i in Credit.objects.filter(totalDebt__gt=0):
+                        for i in _credit_relations(Credit.objects.filter(totalDebt__gt=0)):
                             item = i.toJSON()
                             item['dl'] = float(dl_value)
                             item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
                             data.append(item)
                     if include == 1:
-                         for i in Credit.objects.all():
+                         for i in _credit_relations(Credit.objects.all()):
                             item = i.toJSON()
                             item['dl'] = float(dl_value)
                             item['totalDebtBs'] = round(float(item['totalDebt']) * float(dl_value), 2)
                             data.append(item)
             elif action == 'searchdata2':
                 data = []
-                for i in DetCredit.objects.filter(credit__id=request.POST['id']).exclude(status=0):
+                for i in _det_credit_relations(DetCredit.objects.filter(credit__id=request.POST['id']).exclude(status=0)):
                     item = i.toJSON()
                     data.append(item)
             elif action == 'payment':
+                require_perm(request.user, 'change_credit')
                 dateHour = timezone.localtime(timezone.now())
                 date_joined_str = request.POST['datejoined']
                 if date_joined_str:
@@ -91,27 +112,26 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     datejoined = date.today().strftime('%Y-%m-%d')
                     dateHour = now
 
-                credit = Credit.objects.get(pk=request.POST['idCredit'])
                 dl = get_dollar()
                 dl_value = dl.get('dolar1')
 
                 with transaction.atomic():
+                    credit = Credit.objects.select_for_update().get(pk=request.POST['idCredit'])
                     method = Method_pay.objects.get(pk=request.POST['method_pay'])
-                    totalPayment = request.POST['totalPayment']
-                    amount = 0
-                    amountBs = 0
+                    totalPayment = Decimal(request.POST['totalPayment'])
+                    rate = Decimal(str(dl_value))
+                    require_dollar_rate(rate)
+                    cent = Decimal('0.01')
                     if method.type_symbol == '$':
-                        amount = float(totalPayment)
-                        amountBs = round((float(totalPayment) * float(dl_value)), 2)
-                        totalDebt = float(credit.totalDebt) - float(totalPayment)
+                        amount = totalPayment
+                        amountBs = (totalPayment * rate).quantize(cent, rounding=ROUND_HALF_UP)
                     elif method.type_symbol == 'Bs':
-                        amountBs = float(totalPayment)
-                        amount = round((float(totalPayment) / float(dl_value)), 2)
-                        totalDebt = float(credit.totalDebt) - float(amount)
-                    credit.totalDebt = totalDebt
+                        amountBs = totalPayment
+                        amount = (totalPayment / rate).quantize(cent, rounding=ROUND_HALF_UP)
+                    else:
+                        raise UserError('La moneda del método de pago no es válida')
+                    credit.totalDebt = credit.totalDebt - amount
                     credit.save()
-
-                    method = Method_pay.objects.get(pk=request.POST['method_pay'])
 
                     newDetCredit = DetCredit()
                     newDetCredit.credit_id = credit.id
@@ -119,15 +139,15 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     newDetCredit.method_pay_id = method.id
                     newDetCredit.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
                     newDetCredit.operation = '-'
-                    newDetCredit.quantity = float(amount)
-                    newDetCredit.quantitybs = float(amountBs)
+                    newDetCredit.quantity = amount
+                    newDetCredit.quantitybs = amountBs
                     newDetCredit.description = ' Método: ' + str(method.name) + '. ' + request.POST['description']
                     newDetCredit.save()
 
                     check_pay_all = request.POST.get('checkPayAll') == '1'
                     if check_pay_all and credit.totalDebt > 0:
-                        residuo = float(credit.totalDebt)
-                        
+                        residuo = credit.totalDebt
+
                         closeCredit = DetCredit()
                         closeCredit.credit_id = credit.id
                         closeCredit.last_credit_date = datejoined
@@ -135,11 +155,11 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                         closeCredit.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
                         closeCredit.operation = '-'
                         closeCredit.quantity = residuo
-                        closeCredit.quantitybs = round((residuo * float(dl_value)), 2)
+                        closeCredit.quantitybs = (residuo * rate).quantize(cent, rounding=ROUND_HALF_UP)
                         closeCredit.description = 'Marcado manualmente como pagado'
                         closeCredit.status = 2
                         closeCredit.save()
-                        
+
                         credit.totalDebt = 0
                         credit.save()
             elif action == 'delete':
@@ -149,16 +169,18 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 else:
                     Credit.objects.using(db).get(pk=request.POST['id']).delete()
             elif action == 'deleteItem':
-                print('Entro en el delelte', request.POST)
-                group = request.user.groups.first()
-                if group.id != 1:
+                if not request.user.is_superuser:
                     data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
                 else:
                     with transaction.atomic():
-                        d = DetCredit.objects.get(pk=request.POST['id'])
+                        d = DetCredit.objects.select_for_update().get(pk=request.POST['id'])
+                        if d.status == 0:
+                            raise UserError('Este abono ya fue eliminado')
+                        if d.operation != '-':
+                            raise UserError('Solo se pueden eliminar abonos')
 
-                        c = Credit.objects.get(pk=d.credit.id)
-                        c.totalDebt = float(c.totalDebt) + float(d.quantity)
+                        c = Credit.objects.select_for_update().get(pk=d.credit_id)
+                        c.totalDebt = c.totalDebt + d.quantity
                         c.save()
 
                         d.status = 0
@@ -166,7 +188,8 @@ class CreditListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_methods_pay(self):
@@ -194,35 +217,7 @@ class CreditReportPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView)
     permission_required = 'view_credit'
 
     def link_callback(self, uri, rel):
-            """
-            Convert HTML URIs to absolute system paths so xhtml2pdf can access those
-            resources
-            """
-            result = finders.find(uri)
-            if result:
-                    if not isinstance(result, (list, tuple)):
-                            result = [result]
-                    result = list(os.path.realpath(path) for path in result)
-                    path=result[0]
-            else:
-                    sUrl = settings.STATIC_URL        # Typically /static/
-                    sRoot = settings.STATIC_ROOT      # Typically /home/userX/project_static/
-                    mUrl = settings.MEDIA_URL         # Typically /media/
-                    mRoot = settings.MEDIA_ROOT       # Typically /home/userX/project_static/media/
-
-                    if uri.startswith(mUrl):
-                            path = os.path.join(mRoot, uri.replace(mUrl, ""))
-                    elif uri.startswith(sUrl):
-                            path = os.path.join(sRoot, uri.replace(sUrl, ""))
-                    else:
-                            return uri
-
-            # make sure that file exists
-            if not os.path.isfile(path):
-                    raise Exception(
-                            'media URI must start with %s or %s' % (sUrl, mUrl)
-                    )
-            return path
+        return resolve_pdf_uri(uri)
 
     def getCredit(self, start, end):
         data = []
@@ -232,8 +227,8 @@ class CreditReportPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView)
                 item = c.toJSON()
                 item['dateformat'] = c.last_credit_date.strftime('%d/%m/%Y')
                 data.append(item)
-        except:
-            pass
+        except Exception:
+            logger.exception('[%s] error armando datos del reporte', __name__)
         return data
     
     # @pdf_decorator(pdfname='new_filename.pdf')
@@ -271,7 +266,8 @@ class CreditReportPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView)
                 link_callback=self.link_callback    
             )
             return response
-        except:
-            pass
+        except Exception as e:
+            log_error(logger, e, '[%s] error generando PDF usuario=%s', __name__, request.user)
+            messages.error(request, 'No se pudo generar el PDF. Intenta de nuevo o avisa al administrador.')
         return HttpResponseRedirect(reverse_lazy('crud:credit_list'))
 

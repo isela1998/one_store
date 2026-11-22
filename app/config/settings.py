@@ -155,3 +155,19 @@ django_heroku.settings(locals())
 
 if config('DJANGO_PRODUCTION_ENV', default=False, cast=bool):
     from .settings_production import *
+
+# Logging: los loggers de la app (mf.*) escriben a consola (VI-07).
+# Va al final para que ni django_heroku ni settings_production lo sobrescriban.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'std': {'format': '%(asctime)s %(levelname)s %(name)s: %(message)s'},
+    },
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'std'},
+    },
+    'loggers': {
+        'mf': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+    },
+}

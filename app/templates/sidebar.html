@@ -164,6 +164,7 @@
                         </p>
                     </a>
                 </li>
+                {% if request.user.is_superuser %}
                 <li class="nav-item">
                     <a href="{% url 'user:users_list' %}" class="nav-link">
                         <i class="nav-icon fas fa-user-md"></i>
@@ -172,6 +173,7 @@
                         </p>
                     </a>
                 </li>
+                {% endif %}
                 <hr class="hr_division">
             </ul>
             {% endif %}

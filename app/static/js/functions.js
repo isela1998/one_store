@@ -241,3 +241,13 @@ $(function () {
   } else {
   }
 });
+
+// Escapa texto de usuario antes de insertarlo como HTML (previene XSS).
+function escapeHtml(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}

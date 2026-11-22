@@ -5,19 +5,25 @@ var sede_id = 0;
 function details_vents(d) {
   let html = '';
   html += `<span><b>Cliente:</b></span><br>`;
-  html += `<span> ${d.client.names} ${d.client.identity}${d.client.ci} ${d.client.contact}</span><hr>`;
+  html += `<span> ${escapeHtml(d.client.names)} ${escapeHtml(d.client.identity)}${escapeHtml(d.client.ci)} ${escapeHtml(d.client.contact)}</span><hr>`;
   html += `<span><b>Nº Factura:</b></span><br>`;
-  html += `<span>${d.invoice_number}</span><br>`;
+  html += `<span>${escapeHtml(d.invoice_number)}</span><br>`;
   html += `<span><b>Estado:</b></span><br>`;
   if (d.status == 0)
     html += `<span class="badge badge-success text-dark pointer-1">Pagada</span><hr>`;
   else if (d.status == 1)
     html += `<span class="badge badge-warning text-dark pointer-1">Crédito</span><hr>`;
   else if (d.status == 2)
-    html += `<span class="badge badge-warning text-dark pointer-1">Anulada</span><hr>`;
+    html += `<span class="badge badge-warning text-dark pointer-1">Anulada</span><br>`;
+  if (d.status == 2 && d.cancel_reason) {
+    let esc = (v) => $('<div>').text(v || '').html();
+    html += `<span>Anulada por ${esc(d.cancelled_by)} el ${esc(d.cancelled_at)}: ${esc(d.cancel_reason)}</span><hr>`;
+  } else if (d.status == 2) {
+    html += `<hr>`;
+  }
   html += '<span><b>PRODUCTOS:</b></span><hr>';
   $.each(d.det, function (key, value) {
-    html += `<span> ${value.prod.brand} ${value.prod.product} (${value.prod.type_product.name})</span><br>`;
+    html += `<span> ${escapeHtml(value.prod.brand)} ${escapeHtml(value.prod.product)} (${escapeHtml(value.prod.type_product.name)})</span><br>`;
     html += `<span>Cantidad: ${value.quantity}</span><br>`;
     html += `<span>Precio: ${value.price}</span><br>`;
     html += `<span>Subtotal: ${value.total}</span><hr>`;
@@ -31,16 +37,16 @@ function details_vents(d) {
   html += `<span><b>Total (Bs):</b></span><br>`;
   html += `<span>${d.totalBs}</span><br><hr>`;
   html += `<span><b>Método de Pago Nº 1:</b></span><br>`;
-  html += `<span>${d.method_pay.name}</span><br>`;
+  html += `<span>${escapeHtml(d.method_pay.name)}</span><br>`;
   html += `<span>${d.received} ${d.method_pay.type_symbol}</span><br><hr>`;
   html += '<span><b>Método de Pago Nº 2:</b></span><br>';
-  html += `<span>${d.method_pay1.name}</span><br>`;
+  html += `<span>${escapeHtml(d.method_pay1.name)}</span><br>`;
   html += `<span>${d.received1} ${d.method_pay1.type_symbol}</span><br><hr>`;
   html += '<span><b>Método de Pago Nº 3:</b></span><br>';
-  html += `<span>${d.method_pay2.name}</span><br>`;
+  html += `<span>${escapeHtml(d.method_pay2.name)}</span><br>`;
   html += `<span>${d.received2} ${d.method_pay2.type_symbol}</span><br><hr>`;
   html += '<span><b>Notas y/o Descripción:</b></span><br>';
-  html += `<span>${d.description}</span>`;
+  html += `<span>${escapeHtml(d.description)}</span>`;
 
   document.getElementById('detailsVent').innerHTML = html;
   $('#modalDetails').show();
@@ -70,7 +76,7 @@ function getData(start, end) {
       dataSrc: '',
     },
     columns: [
-      { data: 'user' },
+      { data: 'user', render: $.fn.dataTable.render.text() },
       { data: 'datehour' },
       { data: 'invoice_number' },
       { data: 'type_sale' },
@@ -120,7 +126,7 @@ function getData(start, end) {
       {
         targets: [-3],
         render: function (data, type, row) {
-          let client = `<i>${data.names} (${data.ci}) ${data.contact}</i>`;
+          let client = `<i>${escapeHtml(data.names)} (${escapeHtml(data.ci)}) ${escapeHtml(data.contact)}</i>`;
           return client;
         },
       },
@@ -228,16 +234,39 @@ $(function () {
       parameters.append('sede', sede);
       parameters.append('action', 'return');
       parameters.append('id', data.id);
-      submit_with_ajax_msj(
-        window.location.pathname,
-        'Notificación',
-        'Se ANULARÁ la factura ¿Desea continuar?',
-        parameters,
-        function (response) {
-          alertSweetSuccess('Factura anulada con éxito');
-          setTimeout(tableSale.ajax.reload(), 5000);
-        }
-      );
+      $.confirm({
+        theme: 'material',
+        title: 'Notificación',
+        icon: 'fa fa-info',
+        content:
+          '<p>Se ANULARÁ la factura. Indique el motivo:</p>' +
+          '<input type="text" class="form-control cancel-reason" maxlength="255" autocomplete="off">',
+        columnClass: 'small',
+        typeAnimated: true,
+        buttons: {
+          info: {
+            text: 'Si',
+            btnClass: 'btn-outline-info',
+            action: function () {
+              let reason = this.$content.find('.cancel-reason').val().trim();
+              if (!reason) {
+                message_error('Debe indicar el motivo de la anulación');
+                return false;
+              }
+              parameters.append('reason', reason);
+              submit_with_ajax(window.location.pathname, parameters, function (response) {
+                alertSweetSuccess('Factura anulada con éxito');
+                setTimeout(tableSale.ajax.reload(), 5000);
+              });
+            },
+          },
+          danger: {
+            text: 'No',
+            btnClass: 'btn-red',
+            action: function () {},
+          },
+        },
+      });
     });
 });
 

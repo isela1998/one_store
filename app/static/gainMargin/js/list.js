@@ -27,8 +27,8 @@ function getData() {
         columns: [
             { "data": "code" },
             { "data": "category.name" },
-            { "data": "brand" },
-            { "data": "product" },
+            { "data": "brand", "render": $.fn.dataTable.render.text() },
+            { "data": "product", "render": $.fn.dataTable.render.text() },
             { "data": "cost" },
             { "data": "price_dl" },
             { "data": "gainU" },

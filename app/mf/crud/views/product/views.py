@@ -8,7 +8,7 @@ from django.urls import reverse_lazy
 from django.db import transaction
 import json
 from decimal import Decimal
-from django.db.models import IntegerField
+from django.db.models import F, IntegerField
 from django.db.models.functions import Cast
 
 from mf.crud.mixins import IsSuperuserMixin, ValidatePermissionMixin
@@ -25,11 +25,14 @@ from django.conf import settings
 from xhtml2pdf import pisa
 from datetime import date
 
+from django.contrib import messages
+import logging
+logger = logging.getLogger(__name__)
+
 class ProductListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     template_name = 'product/list.html'
     permission_required = 'view_product'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -41,7 +44,7 @@ class ProductListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
             action = request.POST['action']
             if action == 'searchdata':
                 data = []
-                for i in Product.objects.exclude(status=0):
+                for i in Product.objects.select_related('category', 'type_product').exclude(status=0):
                     item = i.toJSON()
                     try:
                         css = 'badge color2 fill-available text-light pointer-1'
@@ -50,7 +53,7 @@ class ProductListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
                         item['css'] = css
                         data.append(item)
                     except Exception as e:
-                        data['error'] = str(e)            
+                        data['error'] = error_message(e)
             elif action == 'add':
                 perms = ['add_product']
                 group = request.user.groups.first()
@@ -70,6 +73,8 @@ class ProductListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
                     price = price_bs / iva
                     
                     quantity = float(request.POST['quantity'])
+                    if quantity < 0:
+                        raise UserError('La cantidad no puede ser negativa')
                     
                     with transaction.atomic():
                         p = Product()
@@ -121,14 +126,26 @@ class ProductListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
                     price = price_bs / iva
                     
                     with transaction.atomic():
-                        p = Product.objects.using(db).get(pk=request.POST['id'])
+                        p = Product.objects.using(db).select_for_update().get(pk=request.POST['id'])
                         p.category_id = request.POST['category']
                         p.type_product_id = request.POST['type_product']
                         p.product = request.POST['product']
                         p.code = request.POST['code']
                         p.brand = request.POST['brand']
                         p.description = request.POST['description']
-                        p.quantity = float(request.POST['quantity'])
+                        # El stock solo cambia si el usuario lo modificó y nadie lo movió
+                        # (ventas, anulaciones, entradas) mientras editaba.
+                        new_qty = Decimal(request.POST['quantity'])
+                        original = request.POST.get('quantity_original')
+                        if original not in (None, '') and Decimal(original) != new_qty:
+                            if new_qty < 0:
+                                raise UserError('La cantidad no puede ser negativa')
+                            if p.quantity != Decimal(original):
+                                raise UserError(
+                                    'El stock de este producto cambió mientras lo editabas '
+                                    '(ahora es {:.3f}). Recarga la lista e inténtalo de nuevo.'.format(p.quantity)
+                                )
+                            p.quantity = new_qty
                         p.cost = cost
                         p.price_dl = price_dl
                         p.price = price
@@ -142,9 +159,18 @@ class ProductListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
                     data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
                 elif(authorized == True):
                     data =  []
-                    p = Product.objects.get(pk=request.POST['id'])
-                    p.quantity = float(p.quantity) + float(request.POST['quantity'])
-                    p.save()
+                    qty = Decimal(request.POST['quantity'])
+                    with transaction.atomic():
+                        products = Product.objects.using(db).filter(pk=request.POST['id'])
+                        if qty < 0:
+                            # Corrección a la baja: solo hasta llegar a 0
+                            products = products.filter(quantity__gte=-qty)
+                        updated = products.update(quantity=F('quantity') + qty)
+                        if not updated:
+                            current = Product.objects.using(db).filter(pk=request.POST['id']).first()
+                            if current is None:
+                                raise UserError('El producto no existe')
+                            raise UserError('El stock no puede quedar negativo (stock actual: {:.3f})'.format(current.quantity))
             elif action == 'delete':
                 perms = ['delete_product']
                 group = request.user.groups.first()
@@ -152,14 +178,16 @@ class ProductListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView)
                 if(authorized == False):
                     data['error'] = 'Disculpe, usted no tiene permisos para ejecutar esta acción'
                 elif(authorized == True):
-                    p = Product.objects.get(pk=request.POST['id'])
-                    p.code = 'DELETE-' + p.code
-                    p.status = 0
-                    p.save()
+                    with transaction.atomic():
+                        p = Product.objects.using(db).select_for_update().get(pk=request.POST['id'])
+                        p.code = 'DELETE-' + p.code
+                        p.status = 0
+                        p.save(update_fields=['code', 'status'])
             else:
                 data['error'] = "Ha ocurrido un error"
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):
@@ -180,35 +208,7 @@ class InventaryPdfView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView
     permission_required = 'view_product'
 
     def link_callback(self, uri, rel):
-            """
-            Convert HTML URIs to absolute system paths so xhtml2pdf can access those
-            resources
-            """
-            result = finders.find(uri)
-            if result:
-                    if not isinstance(result, (list, tuple)):
-                            result = [result]
-                    result = list(os.path.realpath(path) for path in result)
-                    path=result[0]
-            else:
-                    sUrl = settings.STATIC_URL        # Typically /static/
-                    sRoot = settings.STATIC_ROOT      # Typically /home/userX/project_static/
-                    mUrl = settings.MEDIA_URL         # Typically /media/
-                    mRoot = settings.MEDIA_ROOT       # Typically /home/userX/project_static/media/
-
-                    if uri.startswith(mUrl):
-                            path = os.path.join(mRoot, uri.replace(mUrl, ""))
-                    elif uri.startswith(sUrl):
-                            path = os.path.join(sRoot, uri.replace(sUrl, ""))
-                    else:
-                            return uri
-
-            # make sure that file exists
-            if not os.path.isfile(path):
-                    raise Exception(
-                            'media URI must start with %s or %s' % (sUrl, mUrl)
-                    )
-            return path
+        return resolve_pdf_uri(uri)
 
     def get(self, request, *args, **kwargs):
         data = []
@@ -241,6 +241,7 @@ class InventaryPdfView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView
                 link_callback=self.link_callback    
             )
             return response
-        except:
-            pass
+        except Exception as e:
+            log_error(logger, e, '[%s] error generando PDF usuario=%s', __name__, request.user)
+            messages.error(request, 'No se pudo generar el PDF. Intenta de nuevo o avisa al administrador.')
         return HttpResponseRedirect(reverse_lazy('crud:products_list'))

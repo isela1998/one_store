@@ -13,11 +13,13 @@ from mf.crud.models import Brand, Dolar
 from mf.crud.forms import BrandForm
 from mf.crud.functions import *
 
+import logging
+logger = logging.getLogger(__name__)
+
 class BrandListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
     template_name = 'brand/list.html'
     permission_required = 'view_brand', 'add_brand', 'change_brand', 'delete_brand'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         request = get_current_request()
         return super().dispatch(request, *args, **kwargs)
@@ -47,7 +49,8 @@ class BrandListView(LoginRequiredMixin, ValidatePermissionMixin, TemplateView):
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):

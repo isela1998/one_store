@@ -7,6 +7,7 @@ from django.db import transaction
 from datetime import date, datetime, timedelta
 import json
 from django.utils import timezone
+from decimal import Decimal
 
 
 from mf.crud.mixins import IsSuperuserMixin, ValidatePermissionMixin
@@ -24,12 +25,15 @@ from xhtml2pdf import pisa
 # from django_xhtml2pdf.utils import pdf_decorator
 from django.contrib.staticfiles import finders
 
+from django.contrib import messages
+import logging
+logger = logging.getLogger(__name__)
+
 class DebtListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
     model = Debt
     template_name = 'debt/list.html'
     permission_required = 'view_debt'
 
-    @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
@@ -50,6 +54,7 @@ class DebtListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     item = i.toJSON()
                     data.append(item)
             elif action == 'addDebt':
+                require_perm(request.user, 'add_debt')
                 dateHour = timezone.localtime(timezone.now())
                 datejoined = date.today().strftime('%Y-%m-%d')
 
@@ -57,7 +62,7 @@ class DebtListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 newDebt.name = request.POST['name']
                 newDebt.last_credit_date = request.POST['last_credit_date']
                 newDebt.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
-                newDebt.totalDebt = float(request.POST['totalDebt'])
+                newDebt.totalDebt = Decimal(request.POST['totalDebt'])
                 newDebt.save()
 
                 newDetDebt = DetDebt()
@@ -65,36 +70,40 @@ class DebtListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 newDetDebt.datehour = newDebt.datehour
                 newDetDebt.debt_id = newDebt.id
                 newDetDebt.operation = '+'
-                newDetDebt.quantity = float(request.POST['totalDebt'])
+                newDetDebt.quantity = Decimal(request.POST['totalDebt'])
                 newDetDebt.description = request.POST['description']
                 newDetDebt.save()
             elif action == 'payment':
+                require_perm(request.user, 'change_debt')
                 dateHour = timezone.localtime(timezone.now())
                 datejoined = date.today().strftime('%Y-%m-%d')
-                debt = Debt.objects.get(pk=request.POST['idDebt'])
-
-                if(float(request.POST['totalPayment']) > float(debt.totalDebt)):
-                    data['error'] = 'El abono no puede ser mayor que la deuda'
-                else:
-                    with transaction.atomic():
-                        debt.totalDebt = float(debt.totalDebt) - float(request.POST['totalPayment'])
-                        debt.save()
-
-                        newDetDebt = DetDebt()
-                        newDetDebt.debt_id = debt.id
-                        newDetDebt.last_debt_date = datejoined
-                        newDetDebt.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
-                        newDetDebt.operation = '-'
-                        newDetDebt.quantity = float(request.POST['totalPayment'])
-                        newDetDebt.description = request.POST['description']
-                        newDetDebt.save()
-            elif action == 'increase':
-                dateHour = timezone.localtime(timezone.now())
-                datejoined = date.today().strftime('%Y-%m-%d')
-                debt = Debt.objects.get(pk=request.POST['idIncreaseDebt'])
-
                 with transaction.atomic():
-                    debt.totalDebt = float(debt.totalDebt) + float(request.POST['totalPayment'])
+                    debt = Debt.objects.select_for_update().get(pk=request.POST['idDebt'])
+                    payment = Decimal(request.POST['totalPayment'])
+
+                    if payment > debt.totalDebt:
+                        raise UserError('El abono no puede ser mayor que la deuda')
+
+                    debt.totalDebt = debt.totalDebt - payment
+                    debt.save()
+
+                    newDetDebt = DetDebt()
+                    newDetDebt.debt_id = debt.id
+                    newDetDebt.last_debt_date = datejoined
+                    newDetDebt.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
+                    newDetDebt.operation = '-'
+                    newDetDebt.quantity = payment
+                    newDetDebt.description = request.POST['description']
+                    newDetDebt.save()
+            elif action == 'increase':
+                require_perm(request.user, 'change_debt')
+                dateHour = timezone.localtime(timezone.now())
+                datejoined = date.today().strftime('%Y-%m-%d')
+                with transaction.atomic():
+                    debt = Debt.objects.select_for_update().get(pk=request.POST['idIncreaseDebt'])
+                    amount = Decimal(request.POST['totalPayment'])
+
+                    debt.totalDebt = debt.totalDebt + amount
                     debt.save()
 
                     newDetDebt = DetDebt()
@@ -102,11 +111,11 @@ class DebtListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                     newDetDebt.last_debt_date = datejoined
                     newDetDebt.datehour = dateHour.strftime('%Y-%m-%d %I:%M %p')
                     newDetDebt.operation = '+'
-                    newDetDebt.quantity = float(request.POST['totalPayment'])
+                    newDetDebt.quantity = amount
                     newDetDebt.description = request.POST['description']
                     newDetDebt.save()
             elif action == 'delete':
-                perms = ['delete_product']
+                perms = ['delete_debt']
                 group = request.user.groups.first()
                 authorized = ValidatePermissions(perms, group)
                 if(authorized == False):
@@ -116,7 +125,8 @@ class DebtListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
             else:
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
-            data['error'] = str(e)
+            log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
+            data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):
@@ -134,38 +144,10 @@ class DebtListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
         return context
 
 class DebtReportPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
-    permission_required = 'add_user'
+    permission_required = 'view_debt'
 
     def link_callback(self, uri, rel):
-            """
-            Convert HTML URIs to absolute system paths so xhtml2pdf can access those
-            resources
-            """
-            result = finders.find(uri)
-            if result:
-                    if not isinstance(result, (list, tuple)):
-                            result = [result]
-                    result = list(os.path.realpath(path) for path in result)
-                    path=result[0]
-            else:
-                    sUrl = settings.STATIC_URL        # Typically /static/
-                    sRoot = settings.STATIC_ROOT      # Typically /home/userX/project_static/
-                    mUrl = settings.MEDIA_URL         # Typically /media/
-                    mRoot = settings.MEDIA_ROOT       # Typically /home/userX/project_static/media/
-
-                    if uri.startswith(mUrl):
-                            path = os.path.join(mRoot, uri.replace(mUrl, ""))
-                    elif uri.startswith(sUrl):
-                            path = os.path.join(sRoot, uri.replace(sUrl, ""))
-                    else:
-                            return uri
-
-            # make sure that file exists
-            if not os.path.isfile(path):
-                    raise Exception(
-                            'media URI must start with %s or %s' % (sUrl, mUrl)
-                    )
-            return path
+        return resolve_pdf_uri(uri)
 
     def getDebt(self, start, end):
         data = []
@@ -175,8 +157,8 @@ class DebtReportPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 item = d.toJSON()
                 item['dateformat'] = d.last_credit_date.strftime('%d/%m/%Y')
                 data.append(item)
-        except:
-            pass
+        except Exception:
+            logger.exception('[%s] error armando datos del reporte', __name__)
         return data
     
     # @pdf_decorator(pdfname='new_filename.pdf')
@@ -214,7 +196,8 @@ class DebtReportPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 link_callback=self.link_callback    
             )
             return response
-        except:
-            pass
+        except Exception as e:
+            log_error(logger, e, '[%s] error generando PDF usuario=%s', __name__, request.user)
+            messages.error(request, 'No se pudo generar el PDF. Intenta de nuevo o avisa al administrador.')
         return HttpResponseRedirect(reverse_lazy('crud:debt_list'))
 
