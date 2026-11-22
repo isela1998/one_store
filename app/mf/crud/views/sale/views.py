@@ -105,7 +105,9 @@ class SaleListView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
                 data['error'] = 'Ha ocurrido un error'
         except Exception as e:
             log_error(logger, e, '[%s] error en acción=%s usuario=%s', __name__, request.POST.get('action'), request.user)
-            data['error'] = error_message(e)
+            print(error_message(e))
+            print("ERROR ES", e)
+            # data['error'] = error_message(e)
         return JsonResponse(data, safe=False)
 
     def get_context_data(self, **kwargs):
@@ -773,7 +775,7 @@ class SalesPdfView(LoginRequiredMixin, ValidatePermissionMixin, ListView):
         try:
             allSales = DetSale.objects.filter(
                 sale__datejoined__gte=start, sale__datejoined__lte=end
-            ).exclude(sale__status=2).select_related('prod__type_product')
+            ).exclude(sale__status=2).exclude(prod__status=0).select_related('prod__type_product')
 
             # Una sola pasada: acumula por código de producto (en orden de aparición)
             acc = {}
