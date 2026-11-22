@@ -48,7 +48,7 @@ function getDifference() {
     let totalReceived = validatePay();
 
     differenceDl = totalInvoice - totalReceived;
-    differenceBs = differenceDl * sales.items.dolar1;
+    differenceBs = differenceDl.toFixed(2) * sales.items.dolar1;
 
     $('input[name="totalDlR"]').val((Number(differenceDl) || 0).toFixed(2));
     $('input[name="totalBsR"]').val((Number(differenceBs) || 0).toFixed(2));
